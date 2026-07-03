@@ -4,8 +4,6 @@ from mediscan.config import Settings
 def test_defaults_load_without_env_file():
     # Build a Settings that ignores .env, then assert
     # all three fields equal their documented defaults.
-    ...
-
     settings = Settings(_env_file=None)
 
     assert settings.app_name == "MediScan by DipsAI"

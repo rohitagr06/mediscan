@@ -2,6 +2,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
 
+from mediscan.schemas.confidence import Score
+
 
 class Severity(StrEnum):
     NORMAL = "normal"
@@ -17,8 +19,12 @@ class AbnormalDirection(StrEnum):
 
 
 class ReferenceRange(BaseModel):
-    low: float | None = None
-    high: float | None = None
+    low: float | None = Field(
+        default=None, description="Lower bound of the reference range, if given."
+    )
+    high: float | None = Field(
+        default=None, description="Upper bound of the reference range, if given."
+    )
 
     @model_validator(mode="after")
     def reference_bounds(self):
@@ -50,12 +56,11 @@ class LabResult(BaseModel):
         description="Direction of abnormality (low or high), if any.",
     )
     flag_in_report: str | None = Field(
-        default=None, description="Raw flag marker exactly as printed in the report."
+        default=None,
+        description="Raw flag marker exactly as printed in the report.",
     )
-    extraction_confidence: float = Field(
+    extraction_confidence: Score = Field(
         default=1.0,
-        ge=0.0,
-        le=1.0,
         description="Confidence score for biomarker extraction.",
     )
 

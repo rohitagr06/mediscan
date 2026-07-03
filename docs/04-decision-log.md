@@ -14,6 +14,7 @@
 | 008 | 2026-07-03 | PaddleOCR is the target OCR engine; **Tesseract permitted as dev-time substitute** behind the same `OcrEngine` interface if macOS install fights us | Apple Silicon PaddleOCR installs are notoriously flaky; the abstraction makes the engine swappable | Sprint 3 |
 | 009 | 2026-07-03 | `src/` layout, uv, Ruff+Black, pre-commit, CI from Sprint 0 | Production habits are learned by starting with them, not bolting them on | — |
 | 010 | 2026-07-03 | No real medical documents ever enter the repo, tests, or logs — synthetic fixtures only | PHI protection is absolute; a public GitHub repo must never contain anyone's health data | Never |
+| 011 | 2026-07-03 | Confidence scores have NO defaults — every score must be set explicitly; an absent ConfidenceBreakdown means "not yet scored" | A default of 1.0 could silently present unscored output as fully confident — unacceptable in a medical tool. Raised by Rohit during schema review | Never (safety principle) |
 
 ## How to add a decision
 
