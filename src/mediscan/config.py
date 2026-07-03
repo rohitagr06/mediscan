@@ -16,5 +16,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-x = 1
