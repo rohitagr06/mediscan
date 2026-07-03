@@ -15,6 +15,8 @@
 | 009 | 2026-07-03 | `src/` layout, uv, Ruff+Black, pre-commit, CI from Sprint 0 | Production habits are learned by starting with them, not bolting them on | — |
 | 010 | 2026-07-03 | No real medical documents ever enter the repo, tests, or logs — synthetic fixtures only | PHI protection is absolute; a public GitHub repo must never contain anyone's health data | Never |
 | 011 | 2026-07-03 | Confidence scores have NO defaults — every score must be set explicitly; an absent ConfidenceBreakdown means "not yet scored" | A default of 1.0 could silently present unscored output as fully confident — unacceptable in a medical tool. Raised by Rohit during schema review | Never (safety principle) |
+| 012 | 2026-07-03 | Schema security hardening: all models inherit MediScanModel with extra="forbid" + whitespace stripping; lab values ban NaN/Infinity and booleans; length caps on extracted strings | Probing found 6 silent acceptance holes (NaN values, hallucinated extra fields silently dropped, whitespace names, 1MB strings, bool→1.0 coercion). All are realistic OCR/LLM failure modes | If extra="forbid" proves too strict for a future provider integration |
+| 013 | 2026-07-03 | validate_assignment=True on MediScanModel: mutating any field re-runs all validators. frozen=True considered and deferred | Post-construction mutation bypassed every validator (found by Rohit while evaluating frozen=True). frozen rejected for now: it is shallow (lists stay mutable), model_copy(update=) skips validation anyway, and the pipeline's enrichment flow (engine sets severity later) fits validated mutation better | RC2 — revisit frozen snapshots for audit trail |
 
 ## How to add a decision
 

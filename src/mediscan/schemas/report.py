@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.confidence import ConfidenceBreakdown, ProcessingMetadata
 from mediscan.schemas.labs import LabResult
 from mediscan.schemas.summaries import (
@@ -16,7 +17,7 @@ DEFAULT_DISCLAIMER = (
 )
 
 
-class AnalysisReport(BaseModel):
+class AnalysisReport(MediScanModel):
     """The master schema: every MediScan pipeline run produces exactly one of these.
 
     UI rendering, PDF generation, tests, evaluations, and the future RC2

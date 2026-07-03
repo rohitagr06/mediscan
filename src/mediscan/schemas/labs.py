@@ -1,7 +1,8 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
+from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.confidence import Score
 
 
@@ -18,13 +19,27 @@ class AbnormalDirection(StrEnum):
     HIGH = "high"
 
 
-class ReferenceRange(BaseModel):
+def _reject_bool(value: object) -> object:
+    """Booleans coerce to 1.0/0.0 as floats — silent data corruption for a
+    lab value. Reject them before coercion runs (security hardening #012)."""
+    if isinstance(value, bool):
+        raise ValueError("a boolean is not a valid numeric value")
+    return value
+
+
+class ReferenceRange(MediScanModel):
     low: float | None = Field(
-        default=None, description="Lower bound of the reference range, if given."
+        default=None,
+        allow_inf_nan=False,
+        description="Lower bound of the reference range, if given.",
     )
     high: float | None = Field(
-        default=None, description="Upper bound of the reference range, if given."
+        default=None,
+        allow_inf_nan=False,
+        description="Upper bound of the reference range, if given.",
     )
+
+    _no_bool_bounds = field_validator("low", "high", mode="before")(_reject_bool)
 
     @model_validator(mode="after")
     def reference_bounds(self):
@@ -38,11 +53,20 @@ class ReferenceRange(BaseModel):
         return self
 
 
-class LabResult(BaseModel):
-    test_name: str = Field(min_length=1, description="Name of the laboratory analyte.")
-    value: float = Field(description="Raw extracted biomarker measured value.")
+class LabResult(MediScanModel):
+    test_name: str = Field(
+        min_length=1,
+        max_length=200,
+        description="Name of the laboratory analyte.",
+    )
+    value: float = Field(
+        allow_inf_nan=False,
+        description="Raw extracted biomarker measured value.",
+    )
     unit: str | None = Field(
-        default=None, description="Measurement unit for the biomarker."
+        default=None,
+        max_length=50,
+        description="Measurement unit for the biomarker.",
     )
     reference_range: ReferenceRange | None = Field(
         default=None, description="Reference range provided by the laboratory."
@@ -57,12 +81,15 @@ class LabResult(BaseModel):
     )
     flag_in_report: str | None = Field(
         default=None,
+        max_length=20,
         description="Raw flag marker exactly as printed in the report.",
     )
     extraction_confidence: Score = Field(
         default=1.0,
         description="Confidence score for biomarker extraction.",
     )
+
+    _no_bool_value = field_validator("value", mode="before")(_reject_bool)
 
     @model_validator(mode="after")
     def check_severity_consistency(self):

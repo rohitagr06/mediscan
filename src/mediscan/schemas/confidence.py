@@ -1,12 +1,14 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from mediscan.schemas.base import MediScanModel
 
 Score = Annotated[float, Field(ge=0.0, le=1.0)]
 """A confidence score bounded to [0.0, 1.0]. Reused across all schema files."""
 
 
-class ConfidenceBreakdown(BaseModel):
+class ConfidenceBreakdown(MediScanModel):
     """All scores are REQUIRED — no defaults, by design (decision #011).
 
     An unscored pipeline must never masquerade as a confident one. If a
@@ -24,7 +26,7 @@ class ConfidenceBreakdown(BaseModel):
     )
 
 
-class ProcessingMetadata(BaseModel):
+class ProcessingMetadata(MediScanModel):
     duration_ms: float | None = Field(
         default=None, description="Total pipeline processing time in milliseconds."
     )

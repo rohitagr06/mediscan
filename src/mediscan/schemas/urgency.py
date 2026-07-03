@@ -1,6 +1,8 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from mediscan.schemas.base import MediScanModel
 
 
 class UrgencyLevel(StrEnum):
@@ -10,7 +12,7 @@ class UrgencyLevel(StrEnum):
     IMMEDIATE = "seek_immediate_care"
 
 
-class UrgencyAssessment(BaseModel):
+class UrgencyAssessment(MediScanModel):
     level: UrgencyLevel = Field(
         description="Overall urgency level for the report, deterministically derived."
     )

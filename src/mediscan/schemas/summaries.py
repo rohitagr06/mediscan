@@ -1,9 +1,11 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from mediscan.schemas.base import MediScanModel
 
 
-class PatientSummary(BaseModel):
+class PatientSummary(MediScanModel):
     text: str = Field(
         min_length=1,
         description="Plain-language summary of the report for the patient.",
@@ -14,7 +16,7 @@ class PatientSummary(BaseModel):
     )
 
 
-class DoctorSummary(BaseModel):
+class DoctorSummary(MediScanModel):
     text: str = Field(
         min_length=1,
         description="Clinically oriented summary of the report for a physician.",
@@ -25,7 +27,7 @@ class DoctorSummary(BaseModel):
     )
 
 
-class DietaryConsideration(BaseModel):
+class DietaryConsideration(MediScanModel):
     suggestion: str = Field(
         min_length=1,
         description="Informational dietary or lifestyle consideration.",
@@ -43,7 +45,7 @@ class DietaryConsideration(BaseModel):
     )
 
 
-class SpecialistSuggestion(BaseModel):
+class SpecialistSuggestion(MediScanModel):
     specialty: str = Field(
         min_length=1,
         description="Suggested specialist category, e.g. 'Hematologist'.",

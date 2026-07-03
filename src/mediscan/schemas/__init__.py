@@ -4,6 +4,7 @@ Everything the pipeline produces or consumes is defined here.
 Import from this package directly: `from mediscan.schemas import LabResult`.
 """
 
+from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.confidence import (
     ConfidenceBreakdown,
     ProcessingMetadata,
@@ -26,6 +27,7 @@ from mediscan.schemas.urgency import UrgencyAssessment, UrgencyLevel
 
 __all__ = [
     "DEFAULT_DISCLAIMER",
+    "MediScanModel",
     "AbnormalDirection",
     "AnalysisReport",
     "ConfidenceBreakdown",
