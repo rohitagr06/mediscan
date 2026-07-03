@@ -1,0 +1,23 @@
+# Secrets — NEVER commit these
+.env
+
+# Virtual environment
+.venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# macOS junk
+.DS_Store
+
+# Temp / scratch
+tmp/
+*.log
