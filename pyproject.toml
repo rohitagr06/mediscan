@@ -18,6 +18,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "black>=26.5.1",
+    "pytest>=9.1.1",
     "ruff>=0.15.20",
 ]
 
@@ -35,3 +36,6 @@ select = ["E", "F", "I", "B", "UP", "S"]
 [tool.black]
 line-length = 88
 target-version = ["py312"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
