@@ -1,3 +1,9 @@
+"""Tests for mediscan.schemas.summaries.
+
+The key rule under guard: DietaryConsideration.informational_only can
+never be False — dietary text is information, never medical advice.
+"""
+
 import pytest
 from pydantic import ValidationError
 

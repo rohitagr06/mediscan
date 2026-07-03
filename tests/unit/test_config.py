@@ -1,3 +1,17 @@
+"""Tests for mediscan.config.
+
+TESTING CONCEPTS USED HERE
+    - pytest finds any function named test_* in a file named test_*.py.
+      A test passes unless an `assert` inside it fails.
+    - ISOLATION: these tests must give the same result on ANY machine.
+      Settings(_env_file=None) ignores the developer's local .env file,
+      and the `monkeypatch` fixture sets environment variables for the
+      duration of one test only, undoing everything afterwards.
+    - We test the Settings CLASS (building fresh instances), not the
+      shared `settings` instance — that instance was created at import
+      time, before a test could control the environment.
+"""
+
 from mediscan.config import Settings
 
 

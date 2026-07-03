@@ -1,3 +1,10 @@
+"""Tests for mediscan.schemas.report — the master AnalysisReport.
+
+Includes the JSON round-trip test (task 1.9): serialize -> parse ->
+compare equal. JSON is how reports travel between pipeline stages and
+to the UI, so nothing may be bent or lost in transit.
+"""
+
 import pytest
 from pydantic import ValidationError
 

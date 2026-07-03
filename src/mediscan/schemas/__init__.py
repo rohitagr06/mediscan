@@ -1,7 +1,18 @@
 """MediScan master schema package.
 
-Everything the pipeline produces or consumes is defined here.
-Import from this package directly: `from mediscan.schemas import LabResult`.
+Everything the pipeline produces or consumes is defined in this package.
+
+WHAT THIS FILE DOES
+    An __init__.py runs when the package is imported. By re-importing the
+    important names here, we let the rest of the codebase write short
+    imports like:
+
+        from mediscan.schemas import LabResult
+
+    instead of remembering which submodule each class lives in.
+
+    __all__ is the package's official public list: it documents (and
+    controls, for `from ... import *`) exactly what we consider public.
 """
 
 from mediscan.schemas.base import MediScanModel

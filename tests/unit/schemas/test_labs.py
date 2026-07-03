@@ -1,3 +1,13 @@
+"""Tests for mediscan.schemas.labs — the LabResult family.
+
+HOW TO READ THESE TESTS
+    Happy-path tests prove correct data gets through. Rejection tests use
+    `with pytest.raises(ValidationError):` which INVERTS the pass rule:
+    the code inside the block MUST raise that error — if it runs without
+    complaint, the test FAILS. Every rejection test below guards a rule
+    we decided on purpose (see docs/04-decision-log.md #011-#013).
+"""
+
 import pytest
 from pydantic import ValidationError
 

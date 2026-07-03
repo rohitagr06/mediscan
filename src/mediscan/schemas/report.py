@@ -1,3 +1,19 @@
+"""The master schema: one object representing one complete analysis.
+
+WHY THIS FILE EXISTS
+    Every MediScan pipeline run produces exactly one AnalysisReport.
+    The UI renders it, the PDF generator prints it, tests assert on it,
+    and the future RC2 database will store it. One schema, many consumers:
+    change it here and every surface stays consistent.
+
+DESIGN NOTES
+    - Most fields default to None or an empty list: a report is built up
+      stage by stage (extraction fills lab_results, the medical engine
+      fills urgency, and so on). "Not filled yet" is always explicit.
+    - The disclaimer has a default and can never be emptied: no code path
+      can produce a report without it.
+"""
+
 from pydantic import Field
 
 from mediscan.schemas.base import MediScanModel
@@ -11,6 +27,9 @@ from mediscan.schemas.summaries import (
 )
 from mediscan.schemas.urgency import UrgencyAssessment
 
+# A module-level CONSTANT (UPPER_CASE name by convention). The PDF
+# generator and UI import this same constant, so the disclaimer wording
+# can never drift between different surfaces of the product.
 DEFAULT_DISCLAIMER = (
     "MediScan is an informational tool and does not provide medical advice, "
     "diagnosis, or treatment. Always consult a qualified healthcare professional."
@@ -18,12 +37,7 @@ DEFAULT_DISCLAIMER = (
 
 
 class AnalysisReport(MediScanModel):
-    """The master schema: every MediScan pipeline run produces exactly one of these.
-
-    UI rendering, PDF generation, tests, evaluations, and the future RC2
-    database layer all consume this object. Change it here, and everything
-    stays consistent.
-    """
+    """Everything MediScan concluded about one uploaded document."""
 
     lab_results: list[LabResult] = Field(
         default_factory=list,
@@ -47,6 +61,7 @@ class AnalysisReport(MediScanModel):
         default_factory=list,
         description="Suggested specialist categories with reasons.",
     )
+    # None here means "not yet scored" — see decision #011 in confidence.py.
     confidence: ConfidenceBreakdown | None = Field(
         default=None,
         description="Hybrid confidence scores; None means not yet scored.",
@@ -54,6 +69,7 @@ class AnalysisReport(MediScanModel):
     metadata: ProcessingMetadata | None = Field(
         default=None, description="Audit trail of the processing run."
     )
+    # min_length=1 means the disclaimer can be replaced but never removed.
     disclaimer: str = Field(
         default=DEFAULT_DISCLAIMER,
         min_length=1,

@@ -1,3 +1,9 @@
+"""Tests for mediscan.schemas.urgency.
+
+The key rule under guard: an UrgencyAssessment without at least one
+human-readable reason must be impossible (explainability by construction).
+"""
+
 import pytest
 from pydantic import ValidationError
 

@@ -1,3 +1,10 @@
+"""Tests for mediscan.schemas.confidence.
+
+The key rule under guard (decision #011): confidence scores have NO
+defaults — a bare ConfidenceBreakdown() must fail with exactly five
+missing-field errors, one per score.
+"""
+
 import pytest
 from pydantic import ValidationError
 
