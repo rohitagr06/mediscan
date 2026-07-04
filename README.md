@@ -23,8 +23,14 @@ on a curated medical knowledge base.
 
 ## Status
 
-🚧 **RC1 in development** — Sprint 0 (foundations & tooling) complete:
-project skeleton, linting (Ruff + Black), tests (pytest), pre-commit hooks, and CI.
+🚧 **RC1 in development** — Sprint 2 complete (94 tests passing).
+
+| Sprint | Delivered |
+|---|---|
+| 0 ✅ | Tooling: uv, Ruff+Black, pytest, pre-commit, CI |
+| 1 ✅ | Security-hardened master schema (Pydantic v2), full test suite |
+| 2 ✅ | Secure upload validation (magic bytes, spoof detection), self-destructing storage, PyMuPDF text extraction, text-vs-scan router, synthetic fixtures |
+| 3 🔜 | OCR for scans & photos (PaddleOCR / Tesseract) |
 
 ## Quick start
 

@@ -2,6 +2,13 @@
 
 *Written for a beginner. Every stage explains **what** it does, **why** it exists, and the key tradeoff behind it.*
 
+> **Implementation status (end of Sprint 2):** stages 2.1 (ingestion &
+> validation), 2.2 (router; PyMuPDF side of OCR), 2.3-partial (extraction
+> schemas exist; parsing arrives Sprint 4) are BUILT and tested. The
+> PaddleOCR path, medical engine, RAG, AI layer, and presentation stages
+> are design-only so far. Decisions #011-#014 in the decision log refined
+> this design during implementation.
+
 ---
 
 ## 1. The big picture

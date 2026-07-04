@@ -6,7 +6,7 @@
 
 ---
 
-## Sprint 0 — Foundations & Tooling (Week 1)
+## Sprint 0 — Foundations & Tooling (Week 1) ✅ COMPLETE
 
 **Learning goals:** virtual environments and packaging with `uv` · project layout · linting/formatting · pytest basics · pre-commit hooks · your first CI pipeline.
 
@@ -33,7 +33,7 @@
 
 ---
 
-## Sprint 1 — The Master Schema (Week 2)
+## Sprint 1 — The Master Schema (Week 2) ✅ COMPLETE
 
 **Learning goals:** Python type hints deeply · Pydantic v2 models, validators, enums · schema-first design · unit-testing validation logic · why the schema is the backbone every other module plugs into.
 
@@ -61,7 +61,7 @@
 
 ---
 
-## Sprint 2 — Ingestion & Text-PDF Extraction *(outline)*
+## Sprint 2 — Ingestion & Text-PDF Extraction ✅ COMPLETE *(full plan: docs/08)*
 
 Secure upload validation (magic bytes, size caps, temp-file hygiene) · PyMuPDF text + table extraction · the text-vs-scan router · fixtures from synthetic lab PDFs we generate ourselves.
 **Milestone:** a real text-PDF lab report in → raw structured text out, safely.

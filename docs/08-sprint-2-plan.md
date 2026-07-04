@@ -116,8 +116,8 @@ entries if any arose, README status line, retro note in 06-reflections.md.
 
 ## Definition of done
 
-- [ ] All 2.x tasks merged, CI green
-- [ ] Adversarial suite: every threat-model row has ≥1 test
-- [ ] Integration test passes end-to-end
-- [ ] No real PHI anywhere; fixtures documented
-- [ ] Retro written; Sprint 3 (OCR) unblocked
+- [x] All 2.x tasks merged, CI green (94 tests)
+- [x] Adversarial suite: every threat-model row has ≥1 test
+- [x] Integration test passes end-to-end
+- [x] No real PHI anywhere; fixtures documented (tests/fixtures/files/README.md)
+- [x] Retro written (docs/06-reflections.md); Sprint 3 (OCR) unblocked
