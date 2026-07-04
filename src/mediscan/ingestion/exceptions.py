@@ -18,12 +18,22 @@ class UploadValidationError(Exception):
 
 
 class FileTooLargeError(UploadValidationError):
-    """The uploaded file exceeds the configured size limit."""
+    """The uploaded file exceeds the configured size limit.
 
-    def __init__(self, size_mb: float, limit_mb: int):
-        self.size_mb = size_mb
+    The message reports exact BYTES alongside megabytes: a file one byte
+    over the limit would otherwise print as "20.0 MB vs 20 MB", which
+    looks like we rejected an equal size. Bytes are unambiguous.
+    """
+
+    def __init__(self, size_bytes: int, limit_mb: int):
+        self.size_bytes = size_bytes
         self.limit_mb = limit_mb
-        super().__init__(f"file is {size_mb:.1f} MB; the limit is {limit_mb} MB")
+        self.size_mb = size_bytes / (1024 * 1024)
+        limit_bytes = limit_mb * 1024 * 1024
+        super().__init__(
+            f"file exceeds the upload limit: {size_bytes:,} bytes "
+            f"(~{self.size_mb:.2f} MB) > {limit_mb} MB ({limit_bytes:,} bytes)"
+        )
 
 
 class UnsupportedFileTypeError(UploadValidationError):

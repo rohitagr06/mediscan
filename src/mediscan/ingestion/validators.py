@@ -101,7 +101,7 @@ def validate_upload(path: Path) -> DocumentType:
 
     if file_size > max_size_bytes:
         raise FileTooLargeError(
-            size_mb=file_size / _BYTES_PER_MB,
+            size_bytes=file_size,
             limit_mb=settings.max_upload_mb,
         )
 
