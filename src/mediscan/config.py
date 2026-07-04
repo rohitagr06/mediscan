@@ -35,10 +35,16 @@ class Settings(BaseSettings):
     # Standard logging verbosity: DEBUG, INFO, WARNING or ERROR.
     log_level: str = "INFO"
 
-    # Upload size limit in megabytes. Config rather than hardcoded:
-    # a future deployment (e.g. Hugging Face Spaces) may need a
-    # different limit without touching code.
+    # Upload size limit in megabytes. Config rather than hardcoded: a
+    # deployment (e.g. Hugging Face Spaces) may need a different limit
+    # without touching code.
     max_upload_mb: int = 20
+
+    # Router judgment knob: a PDF averaging fewer extractable characters
+    # per page than this is classified as a scan needing OCR. Tunable
+    # because it is a heuristic, not a law — real-world PDFs that
+    # misroute are fixed by adjusting this number in .env, not by code.
+    router_min_chars_per_page: int = 25
 
 
 # A single shared instance, created once at first import.
