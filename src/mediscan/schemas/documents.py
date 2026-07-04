@@ -9,7 +9,7 @@ WHY THIS FILE EXISTS
 
 from enum import StrEnum
 
-from pydantic import Field, model_validator
+from pydantic import Field, computed_field, model_validator
 
 from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.confidence import Score
@@ -42,25 +42,16 @@ class PageText(MediScanModel):
     text: str = Field(
         description="Extracted text of this page; may be empty for blank pages.",
     )
-    char_count: int = Field(
-        ge=0,
-        description="Number of characters in `text`; must match exactly.",
-    )
 
-    @model_validator(mode="after")
-    def check_char_count(self):
-        """An object whose bookkeeping disagrees with its contents is corrupt.
-
-        SECURITY NOTE: the error reports LENGTHS only, never the text
-        itself — page text is patient data and must never leak into
-        exceptions or logs.
-        """
-        if self.char_count != len(self.text):
-            raise ValueError(
-                f"char_count ({self.char_count}) does not match the actual "
-                f"text length ({len(self.text)}) on page {self.page_number}"
-            )
-        return self
+    # char_count is COMPUTED, not stored (decision #014): a stored copy of
+    # a derivable value can drift from its source — and did, when the base
+    # model's whitespace stripping shortened `text` after a caller had
+    # already counted it. Derived facts are measured, never remembered.
+    @computed_field
+    @property
+    def char_count(self) -> int:
+        """Number of characters in `text`, always exact by construction."""
+        return len(self.text)
 
 
 class ExtractedDocument(MediScanModel):
