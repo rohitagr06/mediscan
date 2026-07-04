@@ -21,6 +21,7 @@ from mediscan.schemas.confidence import (
     ProcessingMetadata,
     Score,
 )
+from mediscan.schemas.documents import DocumentType, ExtractedDocument, PageText
 from mediscan.schemas.labs import (
     AbnormalDirection,
     LabResult,
@@ -44,7 +45,10 @@ __all__ = [
     "ConfidenceBreakdown",
     "DietaryConsideration",
     "DoctorSummary",
+    "DocumentType",
+    "ExtractedDocument",
     "LabResult",
+    "PageText",
     "PatientSummary",
     "ProcessingMetadata",
     "ReferenceRange",
