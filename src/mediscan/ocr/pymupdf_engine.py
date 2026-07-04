@@ -14,11 +14,12 @@ from pathlib import Path
 
 import pymupdf
 
+from mediscan.ocr.base import OcrEngine
 from mediscan.ocr.exceptions import CorruptDocumentError
 from mediscan.schemas import DocumentType, ExtractedDocument, PageText
 
 
-class PyMuPdfEngine:
+class PyMuPdfEngine(OcrEngine):
     """Extracts per-page text from text-PDFs into an ExtractedDocument."""
 
     # Audit-trail name recorded in ExtractedDocument.extraction_method.

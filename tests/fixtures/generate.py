@@ -150,6 +150,60 @@ def make_corrupt_pdf(good_pdf: Path, path: Path) -> None:
     path.write_bytes(data[: len(data) // 3])
 
 
+def make_report_photo(path: Path) -> None:
+    """An IMAGE of CBC text — pixels, not characters (task 3.3).
+
+    This is what OCR exists for: the same synthetic values as
+    cbc_report.pdf, but drawn onto a bitmap. No text layer exists;
+    only recognition can read it. Large canvas + big dark-on-white
+    glyphs = a 'good photo' baseline; preprocessing tests degrade it.
+    """
+    from PIL import ImageDraw, ImageFont
+
+    img = Image.new("RGB", (1400, 1000), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    try:
+        font_big = ImageFont.load_default(size=44)
+        font = ImageFont.load_default(size=34)
+    except TypeError:  # older Pillow: no size parameter
+        font_big = font = ImageFont.load_default()
+
+    draw.text(
+        (60, 40), "DipsAI Diagnostics (SYNTHETIC)", fill=(10, 10, 10), font=font_big
+    )
+    draw.text((60, 110), "COMPLETE BLOOD COUNT (CBC)", fill=(10, 10, 10), font=font)
+    y = 200
+    for name, value, unit, ref, flag in CBC_ROWS:
+        line = f"{name}   {value} {unit}   ({ref})   {flag}"
+        draw.text((60, y), line, fill=(15, 15, 15), font=font)
+        y += 70
+    draw.text(
+        (60, y + 40), "SYNTHETIC DOCUMENT FOR TESTING", fill=(90, 90, 90), font=font
+    )
+    img.save(path, "PNG")
+
+
+def make_scanned_cbc_pdf(photo_path: Path, path: Path) -> None:
+    """A TRUE synthetic scan: the report photo embedded in a PDF page.
+
+    Unlike scanned_report.pdf (which tests 'no text at all'), this one
+    contains pictured text — the router must classify it PDF_SCANNED,
+    and the Sprint 3 scanned-PDF path must OCR real content out of it.
+    """
+    c = Canvas(str(path), pagesize=A4)
+    w, h = A4
+    c.drawImage(
+        str(photo_path),
+        10 * mm,
+        h - 160 * mm,
+        width=190 * mm,
+        height=135 * mm,
+        preserveAspectRatio=True,
+    )
+    c.showPage()
+    c.save()
+
+
 def main() -> None:
     OUT.mkdir(exist_ok=True)
     make_text_lab_pdf(OUT / "cbc_report.pdf")
@@ -157,6 +211,8 @@ def main() -> None:
     make_images(OUT / "sample.png", OUT / "sample.jpg")
     make_spoofed_pdf(OUT / "sample.png", OUT / "spoofed.pdf")
     make_corrupt_pdf(OUT / "cbc_report.pdf", OUT / "corrupt.pdf")
+    make_report_photo(OUT / "report_photo.png")
+    make_scanned_cbc_pdf(OUT / "report_photo.png", OUT / "scanned_cbc.pdf")
     for f in sorted(OUT.iterdir()):
         print(f"  {f.name:20} {f.stat().st_size:>7,} bytes")
 

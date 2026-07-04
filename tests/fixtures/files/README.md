@@ -12,3 +12,5 @@ All files here are FABRICATED by `tests/fixtures/generate.py` (decision
 | sample.png / sample.jpg | tiny valid images | validated IMAGE |
 | spoofed.pdf | PNG bytes named .pdf | REJECTED: SpoofedFileTypeError |
 | corrupt.pdf | real PDF truncated mid-body | passes validation, FAILS extraction (CorruptDocumentError) |
+| report_photo.png | IMAGE of CBC text (pixels, no characters) | validated IMAGE; OCR must read the values out of it |
+| scanned_cbc.pdf | that image embedded in a PDF page — a true synthetic scan | router: PDF_SCANNED; scanned-PDF path OCRs real content |
