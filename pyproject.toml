@@ -46,3 +46,5 @@ target-version = ["py312"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: tests that run real OCR models (excluded by default)"]
+addopts = "-m 'not slow'"
