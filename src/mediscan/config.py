@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # because it is a heuristic, not a law — real-world PDFs that
     # misroute are fixed by adjusting this number in .env, not by code.
     router_min_chars_per_page: int = 25
+    preprocess_min_width: int = 1000
 
 
 # A single shared instance, created once at first import.
