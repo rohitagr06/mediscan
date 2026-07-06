@@ -66,7 +66,7 @@
 Secure upload validation (magic bytes, size caps, temp-file hygiene) · PyMuPDF text + table extraction · the text-vs-scan router · fixtures from synthetic lab PDFs we generate ourselves.
 **Milestone:** a real text-PDF lab report in → raw structured text out, safely.
 
-## Sprint 3 — OCR for Scans & Photos *(outline)*
+## Sprint 3 — OCR for Scans & Photos ✅ COMPLETE *(full plan: docs/09)*
 
 PaddleOCR setup on your Mac (with Tesseract escape hatch) · `OcrEngine` abstraction · image preprocessing · OCR confidence capture · router completion.
 **Milestone:** a phone photo of a report in → text + confidence out.

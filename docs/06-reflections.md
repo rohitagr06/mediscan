@@ -69,3 +69,49 @@ because modules should group by RESPONSIBILITY, not by execution order
 **Carried forward to Sprint 3:** the corrupt-open try/except pattern now
 exists twice (engine, router). Third occurrence triggers the refactor
 into a shared helper — twice is coincidence, three times is a refactor.
+
+## Sprint 3 — OCR for Scans & Photos (retro)
+
+**Built:** the OcrEngine contract (an abstract base class), the PaddleOCR
+image engine with honest per-line confidence, image preprocessing, the
+scanned-PDF path (render → clean → recognize), and a DocumentType→engine
+factory. MediScan can now read pixels, not just text.
+
+**The PaddleOCR bet paid off (#015):** decision #008 hedged that Paddle
+might not install on Apple Silicon, with Tesseract as an escape hatch.
+The timeboxed experiment (3.1) installed cleanly on the first try — so
+the escape hatch stays designed but unused, and the OcrEngine contract
+that would have made the swap painless now just makes future engines
+easy to add.
+
+**Three decisions, three flavours:** #015 was an EXPERIMENT resolving an
+old bet; #016 was a MEASUREMENT (preprocessing kept because it bought
++0.08 confidence on a degraded photo, not because it "felt right"); #017
+was a PLAN ADAPTATION (the factory keyed by DocumentType, not backend,
+because reality — one backend — made the planned design premature
+abstraction). Good engineering replaces "obviously" with evidence.
+
+**Best lesson — OCR is guessy:** even at 0.98 confidence, the scanned
+CBC read "DipsAl" for "DipsAI" (an I as a lowercase L) and truncated a
+row. Seeing this firsthand is exactly why Sprint 4's parser must be
+TOLERANT — it cannot demand perfect spelling, it must find lab values
+amid OCR noise.
+
+**Security audit (mid-sprint):** a whole-codebase review surfaced real
+hardening gaps that synthetic fixtures never exercise — image
+decompression bombs (a tiny file that decodes to gigapixels), unbounded
+config knobs (MEDISCAN_RENDER_DPI=100000 → OOM), no page cap on scanned
+PDFs (a 5000-page PDF as a DoS), and the corrupt-open try/except
+duplicated a third time (the retro tripwire, tripped → extracted into a
+shared open_pdf helper). All fixed, all tested. Lesson: "works on my
+fixtures" and "safe against hostile input" are two different bars.
+
+**Process — the file-bridge phantom, again:** the device bridge served
+stale copies of some files during the audit, so we shifted to a
+findings-report-then-patch flow and used `git diff` (against the real
+committed state) as the reliable review surface. When a tool is
+unreliable, route around it with one you trust.
+
+**Carried forward:** observability is still entirely absent — the
+architecture note now says so explicitly, so no one assumes logging
+exists. It arrives in Sprint 7.

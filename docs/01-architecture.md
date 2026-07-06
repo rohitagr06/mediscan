@@ -2,12 +2,18 @@
 
 *Written for a beginner. Every stage explains **what** it does, **why** it exists, and the key tradeoff behind it.*
 
-> **Implementation status (end of Sprint 2):** stages 2.1 (ingestion &
-> validation), 2.2 (router; PyMuPDF side of OCR), 2.3-partial (extraction
-> schemas exist; parsing arrives Sprint 4) are BUILT and tested. The
-> PaddleOCR path, medical engine, RAG, AI layer, and presentation stages
-> are design-only so far. Decisions #011-#014 in the decision log refined
-> this design during implementation.
+> **Implementation status (end of Sprint 3):** ingestion & validation,
+> the text-vs-scan router, PyMuPDF text extraction, AND the full OCR path
+> (PaddleOCR for images + scanned PDFs, image preprocessing, a
+> DocumentType→engine factory) are BUILT, tested, and security-hardened.
+> A photo or scanned PDF now yields text with a real confidence score.
+> Still design-only: structured extraction/parsing (Sprint 4), the
+> medical engine, RAG, the AI layer, observability, and presentation.
+> Decisions #011-#017 refined this design during implementation; a
+> Sprint-3 security audit added an image decompression-bomb guard,
+> bounded config knobs, a shared open_pdf helper, and a page-count cap.
+> NOTE: no logging/observability exists yet (scheduled for Sprint 7) —
+> nothing in the pipeline is observable at runtime today.
 
 ---
 

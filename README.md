@@ -23,14 +23,15 @@ on a curated medical knowledge base.
 
 ## Status
 
-🚧 **RC1 in development** — Sprint 2 complete (94 tests passing).
+🚧 **RC1 in development** — Sprint 3 complete (114 tests passing).
 
 | Sprint | Delivered |
 |---|---|
 | 0 ✅ | Tooling: uv, Ruff+Black, pytest, pre-commit, CI |
 | 1 ✅ | Security-hardened master schema (Pydantic v2), full test suite |
 | 2 ✅ | Secure upload validation (magic bytes, spoof detection), self-destructing storage, PyMuPDF text extraction, text-vs-scan router, synthetic fixtures |
-| 3 🔜 | OCR for scans & photos (PaddleOCR / Tesseract) |
+| 3 ✅ | OCR: PaddleOCR engine (images + scanned PDFs), image preprocessing, OcrEngine contract, DocumentType→engine factory; security-hardened (image-bomb guard, config bounds, page cap) |
+| 4 🔜 | Structured extraction: parse OCR/text into LabResult objects |
 
 ## Quick start
 
@@ -48,6 +49,9 @@ uv run pre-commit install
 uv run pytest
 ```
 
+Note: the OCR tests are marked `slow` and excluded from the default run. Run them with
+`uv run pytest -m slow` (downloads ~200 MB of PaddleOCR models on first use).
+
 ## Documentation
 
 | Document | What it covers |
@@ -58,11 +62,13 @@ uv run pytest
 | [Sprint roadmap](docs/03-sprint-roadmap.md) | The build plan, sprint by sprint |
 | [Decision log](docs/04-decision-log.md) | Every significant choice and its reasoning |
 | [Environment setup](docs/05-environment-setup.md) | Blank machine → running tests |
+| [Reflections & retros](docs/06-reflections.md) | Per-sprint lessons learned |
+| [Project starter playbook](docs/07-python-project-starter-playbook.md) | Reusable setup pipeline for any Python project |
 
 ## Tech stack (RC1)
 
-Python 3.12+ · uv · Pydantic v2 · PyMuPDF + PaddleOCR (hybrid OCR) · ChromaDB +
-BGE-small embeddings (RAG) · Gemini / GitHub Models with deterministic fallback ·
+Python 3.12+ · uv · Pydantic v2 · PyMuPDF + PaddleOCR (hybrid OCR) · Pillow (preprocessing) ·
+ChromaDB + BGE-small embeddings (RAG) · Gemini / GitHub Models with deterministic fallback ·
 WeasyPrint (PDF reports) · Gradio (UI) · pytest · Ruff + Black · GitHub Actions
 
 ## License
