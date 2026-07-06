@@ -21,11 +21,10 @@ WHY THE OCR ENGINE IS PASSED IN (dependency injection)
 import tempfile
 from pathlib import Path
 
-import pymupdf
-
 from mediscan.config import settings
+from mediscan.ocr._pdf import open_pdf
 from mediscan.ocr.base import OcrEngine
-from mediscan.ocr.exceptions import CorruptDocumentError
+from mediscan.ocr.exceptions import DocumentTooLargeError
 from mediscan.ocr.paddle_engine import PaddleOcrEngine
 from mediscan.ocr.preprocessing import prepare_image
 from mediscan.schemas import (
@@ -46,12 +45,7 @@ class ScannedPdfEngine(OcrEngine):
 
     def extract(self, path: Path) -> ExtractedDocument:
         """OCR every page of a scanned PDF into one ExtractedDocument."""
-        try:
-            document = pymupdf.open(path)
-        except Exception as err:
-            raise CorruptDocumentError(
-                f"PyMuPDF could not open the file ({type(err).__name__})"
-            ) from err
+        document = open_pdf(path)
 
         # TemporaryDirectory: the standard library's own self-destructing
         # folder (same guarantee as our SecureUploadDir, no upload rules).
@@ -63,6 +57,10 @@ class ScannedPdfEngine(OcrEngine):
             # ---- render each page to a PNG at configured DPI ----
             page_images: list[Path] = []
             with document:
+                if len(document) > settings.max_pdf_pages:
+                    raise DocumentTooLargeError(
+                        pages=len(document), limit=settings.max_pdf_pages
+                    )
                 for index, page in enumerate(document, start=1):
                     pixmap = page.get_pixmap(dpi=settings.render_dpi)
                     image_path = workdir / f"page_{index}.png"

@@ -12,6 +12,9 @@ TESTING CONCEPTS USED HERE
       time, before a test could control the environment.
 """
 
+import pytest
+from pydantic import ValidationError
+
 from mediscan.config import Settings
 
 
@@ -34,3 +37,18 @@ def test_env_var_overrides_default(monkeypatch):
     settings = Settings(_env_file=None)
 
     assert settings.log_level == "DEBUG"
+
+
+def test_out_of_bounds_render_dpi_rejected(monkeypatch):
+    # Hardening (audit): absurd knobs must fail at STARTUP, not at
+    # render time. 100000 DPI would try to render a page the size of
+    # a building.
+    monkeypatch.setenv("MEDISCAN_RENDER_DPI", "100000")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+def test_invalid_log_level_rejected(monkeypatch):
+    monkeypatch.setenv("MEDISCAN_LOG_LEVEL", "LOUD")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)

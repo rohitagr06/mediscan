@@ -23,10 +23,8 @@ CONSERVATIVE CHOICES
 
 from pathlib import Path
 
-import pymupdf
-
 from mediscan.config import settings
-from mediscan.ocr.exceptions import CorruptDocumentError
+from mediscan.ocr._pdf import open_pdf
 from mediscan.schemas import DocumentType
 
 
@@ -51,12 +49,7 @@ def detect_document_type(path: Path) -> DocumentType:
     Raises:
         CorruptDocumentError: the file could not be opened as a PDF.
     """
-    try:
-        document = pymupdf.open(path)
-    except Exception as err:
-        raise CorruptDocumentError(
-            f"PyMuPDF could not open the file ({type(err).__name__})"
-        ) from err
+    document = open_pdf(path)
 
     with document:
         page_count = len(document)

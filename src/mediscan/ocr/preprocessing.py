@@ -8,8 +8,8 @@ WHY THIS FILE EXISTS
 
 MEASURED, NOT ASSUMED
     PaddleOCR does some internal cleanup already, so this step must
-    justify itself with numbers. See docs/04-decision-log.md #016 for
-    the with/without measurement that decided its fate.
+    justify itself with numbers. Decision #016: on a degraded photo,
+    confidence rose from 0.829 to 0.911 with this cleanup applied.
 """
 
 from pathlib import Path
@@ -17,6 +17,11 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 from mediscan.config import settings
+from mediscan.ocr.exceptions import CorruptDocumentError
+
+# A tiny file can decode into a gigapixel "pixel bomb" and exhaust
+# memory. Cap decoded size well above any real report scan (40M px).
+Image.MAX_IMAGE_PIXELS = 40_000_000
 
 
 def prepare_image(source: Path, workdir: Path) -> Path:
@@ -29,18 +34,21 @@ def prepare_image(source: Path, workdir: Path) -> Path:
 
     Returns the path of the cleaned image.
     """
-    image = Image.open(source)
+    try:
+        image = Image.open(source)
+        image.load()  # force full decode NOW so bombs/corruption fail here
+    except Exception as err:
+        raise CorruptDocumentError(
+            f"could not open image for preprocessing ({type(err).__name__})"
+        ) from err
 
-    # 1. Grayscale: "L" is Pillow's name for single-channel gray
-    #    (one brightness number per pixel instead of three color numbers).
+    # 1. Grayscale: "L" = single-channel gray, one brightness per pixel.
     image = image.convert("L")
 
-    # 2. Contrast stretch: darkest pixel becomes black, lightest becomes
-    #    white, everything between spreads out — text separates from paper.
+    # 2. Contrast stretch: text separates from paper.
     image = ImageOps.autocontrast(image)
 
-    # 3. Upscale small images: double the size until letters have enough
-    #    pixels to keep their shapes. Threshold from config (a judgment).
+    # 3. Upscale small images so letters keep their shapes (config knob).
     if image.width < settings.preprocess_min_width:
         image = image.resize((image.width * 2, image.height * 2))
 

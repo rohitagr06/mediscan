@@ -20,3 +20,12 @@ class CorruptDocumentError(DocumentExtractionError):
     def __init__(self, detail: str):
         self.detail = detail
         super().__init__(f"document is corrupt or unreadable: {detail}")
+
+
+class DocumentTooLargeError(DocumentExtractionError):
+    """The document has more pages than the configured limit."""
+
+    def __init__(self, pages: int, limit: int):
+        self.pages = pages
+        self.limit = limit
+        super().__init__(f"document has {pages} pages; the limit is {limit}")

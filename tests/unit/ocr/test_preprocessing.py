@@ -8,6 +8,7 @@ tests pin behavior; the decision log records judgment.
 
 from pathlib import Path
 
+import pytest
 from PIL import Image
 
 from mediscan.config import settings
@@ -48,3 +49,14 @@ def test_upscale_threshold_is_read_from_config(tmp_path, monkeypatch):
     result = prepare_image(small, tmp_path)
 
     assert Image.open(result).size == (200, 100)  # untouched
+
+
+def test_corrupt_image_raises_corrupt_document_error(tmp_path):
+    # Hardening (audit): a file with valid PNG magic bytes but a
+    # truncated body must fail as OUR error, not a raw Pillow error.
+    from mediscan.ocr.exceptions import CorruptDocumentError
+
+    broken = tmp_path / "broken.png"
+    broken.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00\x01\x02")  # header only
+    with pytest.raises(CorruptDocumentError):
+        prepare_image(broken, tmp_path)
