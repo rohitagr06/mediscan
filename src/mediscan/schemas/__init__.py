@@ -30,6 +30,7 @@ from mediscan.schemas.labs import (
     ReferenceRange,
     Severity,
 )
+from mediscan.schemas.medical import RangeResolution, RangeSource
 from mediscan.schemas.report import DEFAULT_DISCLAIMER, AnalysisReport
 from mediscan.schemas.summaries import (
     DietaryConsideration,
@@ -54,6 +55,8 @@ __all__ = [
     "ParseOutcome",
     "PatientSummary",
     "ProcessingMetadata",
+    "RangeResolution",
+    "RangeSource",
     "ReferenceRange",
     "ReferenceRangeEntry",
     "Score",
