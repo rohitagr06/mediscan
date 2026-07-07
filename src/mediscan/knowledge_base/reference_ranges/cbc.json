@@ -1,0 +1,43 @@
+[
+  {
+    "test_name": "Hemoglobin",
+    "unit": "g/dL",
+    "low": 13.0,
+    "high": 17.0,
+    "critical_low": 7.0,
+    "critical_high": 20.0,
+    "source": "Example Clinical Laboratory, Adult Reference Intervals"
+  },
+  {
+    "test_name": "Total Leukocyte Count",
+    "unit": "10^3/uL",
+    "low": 4.0,
+    "high": 11.0,
+    "critical_low": 1.0,
+    "critical_high": 30.0,
+    "source": "Example Clinical Laboratory, Adult Reference Intervals"
+  },
+  {
+    "test_name": "Platelet Count",
+    "unit": "10^3/uL",
+    "low": 150.0,
+    "high": 410.0,
+    "critical_low": 20.0,
+    "critical_high": 1000.0,
+    "source": "Example Clinical Laboratory, Adult Reference Intervals"
+  },
+  {
+    "test_name": "Hematocrit",
+    "unit": "%",
+    "low": 40.0,
+    "high": 50.0,
+    "source": "Example Clinical Laboratory, Adult Reference Intervals"
+  },
+  {
+    "test_name": "MCV",
+    "unit": "fL",
+    "low": 83.0,
+    "high": 101.0,
+    "source": "Example Clinical Laboratory, Adult Reference Intervals"
+  }
+]

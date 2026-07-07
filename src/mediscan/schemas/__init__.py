@@ -23,6 +23,7 @@ from mediscan.schemas.confidence import (
 )
 from mediscan.schemas.documents import DocumentType, ExtractedDocument, PageText
 from mediscan.schemas.extraction import ParseOutcome
+from mediscan.schemas.knowledge import ReferenceRangeEntry
 from mediscan.schemas.labs import (
     AbnormalDirection,
     LabResult,
@@ -54,6 +55,7 @@ __all__ = [
     "PatientSummary",
     "ProcessingMetadata",
     "ReferenceRange",
+    "ReferenceRangeEntry",
     "Score",
     "Severity",
     "SpecialistSuggestion",
