@@ -13,7 +13,7 @@ USAGE
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,6 +61,25 @@ class Settings(BaseSettings):
     # Hard cap on scanned-PDF pages to OCR: a hostile many-page PDF
     # would otherwise render+OCR thousands of images (resource DoS).
     max_pdf_pages: int = Field(default=50, gt=0, le=500)
+
+    # ---- AI explanation layer (Sprint 5) ----
+    # API keys are SECRETS. SecretStr refuses to print its value, so it
+    # cannot leak into a log, error, or repr by accident. They stay None
+    # until set in the environment (.env locally, injected in deployment).
+    gemini_api_key: SecretStr | None = None
+    github_models_token: SecretStr | None = None
+
+    # Which model each rung of the #004 fallback chain uses. Strings so we
+    # can swap models without code changes. (Confirm exact IDs at 5.5/5.6.)
+    gemini_model: str = "gemini-2.0-flash"
+    github_primary_model: str = "openai/gpt-4.1-mini"
+    github_fallback_model: str = "microsoft/Phi-4"
+
+    # AI behaviour knobs — bounded, exactly like your Sprint-3 knobs.
+    llm_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
+    # Low temperature = faithful, not creative. We want accuracy, not flair.
+    llm_temperature: float = Field(default=0.2, ge=0, le=1)
 
     # Severity banding cutoffs (decision #020). These are the exact
     # numbers the deterministic severity engine bands against, kept in
