@@ -76,10 +76,10 @@ PaddleOCR setup on your Mac (with Tesseract escape hatch) · `OcrEngine` abstrac
 Regex/table parsing into `LabResult` · synonym + unit normalization · reference-range logic (report-first, KB-fallback) · severity banding · conservative urgency roll-up. **The safety-critical sprint — pure deterministic Python, heaviest testing of the project.**
 **Milestone:** text in → flagged, severity-ranked, urgency-assessed results out, zero AI involved. Decisions #018–#022 logged; an end-to-end integration test turns the CBC fixture into a Consult-Soon verdict.
 
-## Sprint 5 — The AI Layer *(outline)*
+## Sprint 5 — The AI Explanation Layer *(full plan: docs/11)*
 
-`LLMClient` interface · Gemini + GitHub Models providers · fallback chain, timeouts, backoff · prompt templates in `prompts/` · schema-validated structured output with repair-retry · patient & doctor summaries · guardrail pass.
-**Milestone:** grounded, safe, friendly summaries — that degrade gracefully when APIs die.
+`LLMClient` interface · Gemini + GitHub Models providers · resilient fallback chain (timeouts, backoff) · prompt templates in `prompts/` with prompt-injection defense · schema-validated structured output with repair-retry · four grounded outputs (patient, doctor, dietary, specialist) · deterministic template rung · guardrail pass.
+**Milestone:** grounded, safe, friendly summaries — that degrade gracefully when APIs die (works with ZERO functioning AI).
 
 ## Sprint 6 — RAG & the Knowledge Base *(outline)*
 
