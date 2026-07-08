@@ -12,7 +12,7 @@ from enum import StrEnum
 from pydantic import Field
 
 from mediscan.schemas.base import MediScanModel
-from mediscan.schemas.labs import ReferenceRange
+from mediscan.schemas.labs import AbnormalDirection, ReferenceRange, Severity
 
 
 class RangeSource(StrEnum):
@@ -43,4 +43,25 @@ class RangeResolution(MediScanModel):
 
     source: RangeSource = Field(
         description="Where the effective reference range originated.",
+    )
+
+
+class SeverityAssessment(MediScanModel):
+    """A pure, immutable judgment about one lab value (decision #021).
+
+    Self-contained audit record: which test, what value, our conclusion,
+    and the range/source we judged against. The parser's LabResult is
+    never mutated — this is a NEW value produced beside it.
+    """
+
+    test_name: str = Field(min_length=1, description="Test this judgment is about.")
+    value: float = Field(description="The value that was assessed.")
+    severity: Severity | None = Field(
+        default=None, description="Assigned band; None means un-assessable (no range)."
+    )
+    abnormal_direction: AbnormalDirection | None = Field(
+        default=None, description="Which way the value is abnormal, if any."
+    )
+    range_resolution: RangeResolution = Field(
+        description="The range used and where it came from (provenance)."
     )

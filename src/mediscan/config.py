@@ -13,7 +13,7 @@ USAGE
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,6 +61,33 @@ class Settings(BaseSettings):
     # Hard cap on scanned-PDF pages to OCR: a hostile many-page PDF
     # would otherwise render+OCR thousands of images (resource DoS).
     max_pdf_pages: int = Field(default=50, gt=0, le=500)
+
+    severity_pct_mild: float = Field(default=0.15, gt=0, lt=1)
+    severity_pct_moderate: float = Field(default=0.30, gt=0, lt=1)
+    severity_frac_mild: float = Field(default=0.33, gt=0, lt=1)
+    severity_frac_moderate: float = Field(default=0.66, gt=0, lt=1)
+
+    @model_validator(mode="after")
+    def validate_severity_cutoffs(self) -> "Settings":
+        """Reject configurations where the severity bands are out of order.
+
+        Each cutoff is individually valid between 0 and 1, but if mild >=
+        moderate the bands invert and the engine would report LESS severe
+        results for MORE abnormal values. A single mistyped environment
+        variable must never be able to do that silently -- better to crash
+        at startup with a clear message than to under-report severity.
+        """
+        if self.severity_pct_mild >= self.severity_pct_moderate:
+            raise ValueError(
+                "severity_pct_mild must be less than severity_pct_moderate "
+                f"(got {self.severity_pct_mild} >= {self.severity_pct_moderate})"
+            )
+        if self.severity_frac_mild >= self.severity_frac_moderate:
+            raise ValueError(
+                "severity_frac_mild must be less than severity_frac_moderate "
+                f"(got {self.severity_frac_mild} >= {self.severity_frac_moderate})"
+            )
+        return self
 
 
 # A single shared instance, created once at first import.
