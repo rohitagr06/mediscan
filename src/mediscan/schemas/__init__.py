@@ -15,7 +15,12 @@ WHAT THIS FILE DOES
     controls, for `from ... import *`) exactly what we consider public.
 """
 
-from mediscan.schemas.ai import LLMRequest, LLMResponse
+from mediscan.schemas.ai import (
+    ExplanationProvenance,
+    ExplanationSource,
+    LLMRequest,
+    LLMResponse,
+)
 from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.confidence import (
     ConfidenceBreakdown,
@@ -48,17 +53,19 @@ from mediscan.schemas.urgency import UrgencyAssessment, UrgencyLevel
 
 __all__ = [
     "DEFAULT_DISCLAIMER",
-    "MediScanModel",
     "AbnormalDirection",
     "AnalysisReport",
     "ConfidenceBreakdown",
     "DietaryConsideration",
     "DoctorSummary",
     "DocumentType",
+    "ExplanationProvenance",
+    "ExplanationSource",
     "ExtractedDocument",
     "LabResult",
     "LLMRequest",
     "LLMResponse",
+    "MediScanModel",
     "PageText",
     "ParseOutcome",
     "PatientSummary",

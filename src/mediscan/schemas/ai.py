@@ -7,6 +7,9 @@ WHY THIS FILE EXISTS
     is what lets ONE LLMClient contract stand in front of them all.
 """
 
+from datetime import datetime
+from enum import StrEnum
+
 from pydantic import Field
 
 from mediscan.schemas.base import MediScanModel
@@ -41,3 +44,26 @@ class LLMResponse(MediScanModel):
     model: str = Field(min_length=1, description="Exact model id used.")
     temperature: float = Field(ge=0, le=1, description="Sampling temperature used.")
     latency_ms: float = Field(ge=0, description="How long the call took, in ms.")
+
+
+class ExplanationSource(StrEnum):
+    """Whether an output was written by AI or by the deterministic floor."""
+
+    AI = "ai"
+    DETERMINISTIC = "deterministic"
+
+
+class ExplanationProvenance(MediScanModel):
+    """How one output was produced — recorded on every explanation (#023 spirit).
+
+    Invaluable for debugging ("why does this read oddly at prompt v6?") and for
+    Sprint 7's confidence scoring, which weights AI vs rule-written outputs.
+    """
+
+    source: ExplanationSource = Field(description="ai or deterministic.")
+    prompt_name: str = Field(min_length=1, description="Which prompt template.")
+    prompt_version: int = Field(ge=1, description="That template's version.")
+    provider: str | None = Field(default=None, description="Winning provider, if AI.")
+    model: str | None = Field(default=None, description="Model id, if AI.")
+    temperature: float | None = Field(default=None, description="Sampling temp, if AI.")
+    timestamp: datetime = Field(description="When the output was produced (UTC).")
