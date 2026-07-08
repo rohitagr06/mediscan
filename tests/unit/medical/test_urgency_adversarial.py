@@ -44,7 +44,7 @@ def sa(test_name, severity, direction=None, value=1.0) -> SeverityAssessment:
         value=value,
         severity=severity,
         abnormal_direction=direction,
-        range_resolution=RangeResolution(source=RangeSource.UNKNOWN),
+        range_resolution=RangeResolution(reference_range_source=RangeSource.UNKNOWN),
     )
 
 
@@ -220,8 +220,7 @@ def test_rollup_through_real_engine_critical_wins():
     """Two Platelet-panel values: one normal, one critically high -> Immediate."""
     labs = [
         LabResult(test_name="Platelet Count", value=250.0),  # NORMAL
-        LabResult(test_name="Platelet Count", value=2500.0),
-        # >= critical_high -> CRITICAL
+        LabResult(test_name="Platelet Count", value=2500.0),  # past critical_high
     ]
     result = assess_urgency(assess_results(labs))
     assert result.level is UrgencyLevel.IMMEDIATE

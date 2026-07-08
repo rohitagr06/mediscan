@@ -141,20 +141,25 @@ severity; (2) "unknown never masquerades as fine" shows up twice — an
 un-assessable value floors urgency at Consult Soon, and the review caught
 that an all-mild report must not say "within normal limits".
 
-**A real gap found in review (open decision):** because the parser only
-accepts rows that print their own range (#018) and resolution is
-report-first, the KB's *critical* thresholds are never consulted in the
-real text→verdict flow — so CRITICAL is currently unreachable end-to-end.
-A critically low value in a report that prints a normal range would band
-as HIGH, not CRITICAL. The fix (attach KB critical thresholds to
-report-ranged values by canonical name, keeping the report's normal band)
-is consistent with #020 and is the top candidate for the next decision.
+**An emergent safety gap found in review — and fixed (#023):** because the
+parser only accepts rows that print their own range (#018) and resolution
+is report-first, the KB's *critical* thresholds were never consulted in the
+real text→verdict flow — so a critically low value in a report that prints
+a normal range banded as HIGH, not CRITICAL. No component was buggy; three
+individually-correct decisions interacted badly, which no unit test could
+catch. Decision #023 fixes it: the report keeps its normal range, but KB
+critical thresholds are MERGED in when they sit strictly outside that range
+(a conflicting threshold is dropped — the report wins). Criticals now live
+in a `CriticalThresholds` value object with a derived source, and the
+engine stays 100% deterministic. A regression test proves `Hb 3.0` in a
+printed 13-17 range now reaches CRITICAL → Seek Immediate Care.
 
 **Process:** the file-bridge stale-copy problem returned hard — half the
 staged files were outdated. We routed around it by bundling the live tree
 into a single fresh file on disk and staging that, then verifying every
 file against its live checksum before reviewing. Trust, but checksum.
 
-**Carried forward:** the report-range/critical-threshold decision above;
-KB numbers are still STARTER values pending sourced review before any
-clinical use (#019); observability still absent until Sprint 7.
+**Carried forward:** KB numbers are still STARTER values pending sourced
+review before any clinical use (#019); observability still absent until
+Sprint 7. #023's derived `critical_source` assumes criticals are KB-only —
+revisit if reports ever print their own.

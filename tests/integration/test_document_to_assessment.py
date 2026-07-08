@@ -22,12 +22,13 @@ There are two layers:
 A NOTE ON WHAT THIS PROVES ABOUT RANGES
     Every row in a real report prints its own reference range, and the
     parser (decision #018) only recognizes rows that do. Range resolution
-    is report-first, so these values are judged against the REPORT range
-    via the percentage rule (Option A), which caps at HIGH. That is why no
-    value here reaches CRITICAL even though the KB defines critical
-    thresholds — reaching CRITICAL end-to-end is a pending design decision
-    (attaching KB critical thresholds to report-ranged values). This test
-    asserts today's real, documented behavior.
+    is report-first, so the REPORT range drives normal/mild/moderate/high
+    banding. But under decision #023 the KB's critical thresholds are now
+    MERGED into report-ranged values (when they sit outside the report
+    range), so a genuinely critical value still reaches CRITICAL end to end
+    — see test_pipeline_reaches_critical_with_a_report_range below. The CBC
+    fixture happens to contain no critical values, so its verdict is
+    Consult Soon; the critical path is proven by its own regression test.
 """
 
 from pathlib import Path
@@ -81,8 +82,8 @@ def _assert_expected_cbc_verdict(assessments, urgency):
             got.abnormal_direction is direction
         ), f"{test_name}: direction {got.abnormal_direction} != {direction}"
 
-    # No sourced critical threshold is consulted on the report-range path,
-    # so nothing may reach CRITICAL through this pipeline today.
+    # None of the CBC fixture's values is past a critical threshold, so none
+    # is CRITICAL (the critical PATH is proven separately, below).
     assert all(a.severity is not Severity.CRITICAL for a in assessments)
 
     # Worst finding is MODERATE -> the whole report is Consult Soon.
@@ -138,3 +139,33 @@ def test_cbc_pdf_document_to_assessment_end_to_end():
     urgency = assess_urgency(assessments)
 
     _assert_expected_cbc_verdict(assessments, urgency)
+
+
+def test_pipeline_reaches_critical_with_a_report_range():
+    """Regression test for decision #023 (the safety fix).
+
+    A report line that prints its OWN range but carries a critically low
+    value must still reach CRITICAL -> Seek Immediate Care, because the KB's
+    critical threshold is merged into the report-ranged value. Before #023
+    this value banded as HIGH -> Urgent, under-warning on an emergency.
+
+    If someone ever removes the merge from resolve_reference_range(), this
+    test fails immediately.
+    """
+    # Hemoglobin 3.0 with a printed 13.0-17.0 range. KB critical_low is 7.0.
+    text = "Hemoglobin 3.0 g/dL 13.0 - 17.0 L"
+
+    outcome = parse_lab_text(text)
+    assert len(outcome.results) == 1
+
+    assessments = assess_results(outcome.results)
+    urgency = assess_urgency(assessments)
+
+    hb = assessments[0]
+    assert hb.severity is Severity.CRITICAL
+    assert hb.abnormal_direction is AbnormalDirection.LOW
+    # the normal range still came from the report; the critical came from KB
+    assert hb.range_resolution.reference_range_source.value == "report"
+    assert hb.range_resolution.critical_thresholds.low == 7.0
+    # and the whole report is escalated to the most urgent level
+    assert urgency.level is UrgencyLevel.IMMEDIATE

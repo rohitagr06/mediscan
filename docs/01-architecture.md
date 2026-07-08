@@ -7,16 +7,18 @@
 > (PaddleOCR for images + scanned PDFs, image preprocessing, a
 > DocumentType→engine factory), AND the full deterministic medical core
 > (tolerant line parser, name/unit normalization, report-first/KB-fallback
-> range resolution, hybrid severity banding, conservative urgency roll-up)
-> are BUILT, tested, and security-hardened. A document now flows end to
-> end to a severity- and urgency-assessed verdict with ZERO AI, proven by
-> an integration test on the CBC fixture.
+> range resolution, hybrid severity banding with merged KB critical
+> thresholds, conservative urgency roll-up) are BUILT, tested, and
+> security-hardened. A document now flows end to end to a severity- and
+> urgency-assessed verdict with ZERO AI, proven by integration tests on
+> the CBC fixture — including a critically low value reaching CRITICAL →
+> Seek Immediate Care.
 > Still design-only: RAG, the AI explanation layer, confidence scoring,
 > observability, and presentation (Gradio/PDF).
-> Decisions #011-#022 refined this design during implementation. A known
-> gap logged for a decision: report-supplied ranges currently bypass the
-> KB's critical thresholds, so CRITICAL is not yet reachable end-to-end —
-> see the note below.
+> Decisions #011-#023 refined this design during implementation. #023
+> closed an emergent safety gap: report-supplied ranges now MERGE the KB's
+> critical thresholds (when they sit outside the report range), so genuinely
+> life-threatening values remain detectable end-to-end.
 > NOTE: no logging/observability exists yet (scheduled for Sprint 7) —
 > nothing in the pipeline is observable at runtime today.
 

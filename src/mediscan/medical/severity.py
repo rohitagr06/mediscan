@@ -38,10 +38,13 @@ def _band(
     if not below and not above:
         return Severity.NORMAL, None
 
-    # 3. Pick the side's numbers.
+    # 3. Pick the side's numbers. Critical thresholds live in a grouped
+    #    value object (#023); the engine reads them the same way whether the
+    #    range came from the report or the KB — it never inspects provenance.
     direction = AbnormalDirection.LOW if below else AbnormalDirection.HIGH
     boundary = rng.low if below else rng.high
-    critical = resolution.critical_low if below else resolution.critical_high
+    ct = resolution.critical_thresholds
+    critical = ct.low if below else ct.high
 
     # 4. CRITICAL — only when a sourced threshold exists and we're past it.
     if critical is not None and (

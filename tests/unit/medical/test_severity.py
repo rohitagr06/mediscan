@@ -48,11 +48,8 @@ from mediscan.schemas import (
     SeverityAssessment,
 )
 
-# RangeSource is defined in the medical schema module; import it from there
-# directly so this test does not depend on it being re-exported by the
-# schemas package (RangeResolution/SeverityAssessment ARE re-exported --
-# your severity.py imports them from mediscan.schemas).
-from mediscan.schemas.medical import RangeSource
+# CriticalThresholds/RangeSource live in the medical schema module.
+from mediscan.schemas.medical import CriticalThresholds, RangeSource
 
 # ---------------------------------------------------------------------------
 # Helpers: build a RangeResolution by hand so each test controls everything.
@@ -68,9 +65,8 @@ def res_with_criticals(low, high, critical_low, critical_high) -> RangeResolutio
     """
     return RangeResolution(
         reference_range=ReferenceRange(low=low, high=high),
-        critical_low=critical_low,
-        critical_high=critical_high,
-        source=RangeSource.KNOWLEDGE_BASE,
+        reference_range_source=RangeSource.KNOWLEDGE_BASE,
+        critical_thresholds=CriticalThresholds(low=critical_low, high=critical_high),
     )
 
 
@@ -82,13 +78,13 @@ def res_no_criticals(low=None, high=None) -> RangeResolution:
     """
     return RangeResolution(
         reference_range=ReferenceRange(low=low, high=high),
-        source=RangeSource.REPORT,
+        reference_range_source=RangeSource.REPORT,
     )
 
 
 def res_unknown() -> RangeResolution:
     """No range at all -- the value is un-assessable."""
-    return RangeResolution(source=RangeSource.UNKNOWN)
+    return RangeResolution(reference_range_source=RangeSource.UNKNOWN)
 
 
 # A single fixed range reused across the Option-B truth table:
@@ -269,16 +265,17 @@ def test_assess_lab_result_uses_kb_when_report_has_no_range():
     assert isinstance(assessment, SeverityAssessment)
     assert assessment.severity is Severity.MODERATE
     assert assessment.abnormal_direction is AbnormalDirection.LOW
-    assert assessment.range_resolution.source is RangeSource.KNOWLEDGE_BASE
+    assert (
+        assessment.range_resolution.reference_range_source is RangeSource.KNOWLEDGE_BASE
+    )
     # the assessment carries the value + name so it is self-contained
     assert assessment.test_name == "Hemoglobin"
     assert assessment.value == 9.8
 
 
-def test_assess_prefers_report_range_over_kb():
-    """When the report prints its own range, that wins (source=REPORT)."""
-    # A report range with NO criticals -> Option A -> capped at HIGH even
-    # though the KB would have called 6.0 critical.
+def test_assess_report_range_keeps_normal_band_but_merges_kb_criticals():
+    """#023: the report's range wins for banding, but a value past a MERGED
+    KB critical threshold still reaches CRITICAL."""
     result = LabResult(
         test_name="Hemoglobin",
         value=6.0,
@@ -286,8 +283,13 @@ def test_assess_prefers_report_range_over_kb():
         reference_range=ReferenceRange(low=13.0, high=17.0),
     )
     assessment = assess_lab_result(result)
-    assert assessment.range_resolution.source is RangeSource.REPORT
-    assert assessment.severity is Severity.HIGH  # NOT critical: no sourced threshold
+    # the NORMAL range still comes from the report...
+    assert assessment.range_resolution.reference_range_source is RangeSource.REPORT
+    # ...but the KB critical_low (7.0) was merged in, so 6.0 is CRITICAL, not
+    # merely HIGH. This is the safety fix of decision #023.
+    assert assessment.severity is Severity.CRITICAL
+    assert assessment.abnormal_direction is AbnormalDirection.LOW
+    assert assessment.range_resolution.critical_thresholds.low == 7.0
 
 
 def test_assess_unknown_test_is_unassessable():
@@ -296,7 +298,7 @@ def test_assess_unknown_test_is_unassessable():
     assessment = assess_lab_result(result)
     assert assessment.severity is None
     assert assessment.abnormal_direction is None
-    assert assessment.range_resolution.source is RangeSource.UNKNOWN
+    assert assessment.range_resolution.reference_range_source is RangeSource.UNKNOWN
 
 
 def test_assess_lab_result_does_not_mutate_input():
