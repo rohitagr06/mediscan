@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     # would otherwise render+OCR thousands of images (resource DoS).
     max_pdf_pages: int = Field(default=50, gt=0, le=500)
 
+    # OpenAI-compatible endpoints — Gemini and GitHub Models both speak
+    # the OpenAI API, so one SDK drives all three providers.
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    github_base_url: str = "https://models.github.ai/inference"
+
     # ---- AI explanation layer (Sprint 5) ----
     # API keys are SECRETS. SecretStr refuses to print its value, so it
     # cannot leak into a log, error, or repr by accident. They stay None
@@ -71,7 +76,7 @@ class Settings(BaseSettings):
 
     # Which model each rung of the #004 fallback chain uses. Strings so we
     # can swap models without code changes. (Confirm exact IDs at 5.5/5.6.)
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash"
     github_primary_model: str = "openai/gpt-4.1-mini"
     github_fallback_model: str = "microsoft/Phi-4"
 

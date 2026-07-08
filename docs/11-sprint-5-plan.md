@@ -95,14 +95,16 @@ Every task below is written the same way, in plain steps:
 
 | Package | Type | Why |
 |---|---|---|
-| `google-genai` | runtime | Current Google Gen AI SDK (`from google import genai`). Primary provider (Gemini free tier). Supports structured output via a response schema. |
-| `openai` | runtime | GitHub Models is OpenAI-compatible, so the official `openai` SDK — pointed at the GitHub Models endpoint with your GitHub token — drives BOTH GitHub fallbacks (GPT-4.1-mini and Phi-4). One SDK, two providers. |
+| `openai` | runtime | The ONLY AI SDK we need. Gemini AND GitHub Models both expose OpenAI-compatible endpoints, so one `openai` client — pointed at a base URL with the right key — drives all three providers (Gemini, GPT-4.1-mini, Phi-4). One SDK, one provider class, three configs. |
 
-> Exact endpoint URLs and model IDs move fast. We confirm the current
-> GitHub Models base URL and model identifiers from the official docs at
-> build time (tasks 5.5/5.6), not from memory. Retry/backoff is
-> hand-rolled first (so you learn the pattern); `tenacity` is noted as the
-> production-grade alternative if we want it later.
+> **Decision (supersedes the earlier two-SDK plan):** use the `openai` SDK
+> for every provider. Gemini's OpenAI-compatible base URL is
+> `https://generativelanguage.googleapis.com/v1beta/openai/`; GitHub Models
+> is `https://models.github.ai/inference`. Both are config values. This
+> collapses tasks 5.5 and 5.6 into ONE `OpenAICompatibleProvider` class
+> plus three builder functions. Exact model IDs still confirmed live at
+> build time. Retry/backoff is hand-rolled first (so you learn the
+> pattern); `tenacity` is the production-grade alternative for later.
 
 ---
 
