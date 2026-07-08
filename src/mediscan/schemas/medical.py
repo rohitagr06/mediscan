@@ -55,7 +55,13 @@ class SeverityAssessment(MediScanModel):
     """
 
     test_name: str = Field(min_length=1, description="Test this judgment is about.")
-    value: float = Field(description="The value that was assessed.")
+    # allow_inf_nan=False for consistency with the #012 hardening: this
+    # value always originates from an already-validated LabResult.value,
+    # so it's defense-in-depth, but every numeric field in MediScan bans
+    # NaN/Infinity so the rule holds uniformly across the codebase.
+    value: float = Field(
+        allow_inf_nan=False, description="The value that was assessed."
+    )
     severity: Severity | None = Field(
         default=None, description="Assigned band; None means un-assessable (no range)."
     )

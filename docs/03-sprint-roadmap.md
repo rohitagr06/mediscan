@@ -71,10 +71,10 @@ Secure upload validation (magic bytes, size caps, temp-file hygiene) · PyMuPDF 
 PaddleOCR setup on your Mac (with Tesseract escape hatch) · `OcrEngine` abstraction · image preprocessing · OCR confidence capture · router completion.
 **Milestone:** a phone photo of a report in → text + confidence out.
 
-## Sprint 4 — Extraction, Normalization & the Medical Engine *(outline)*
+## Sprint 4 — Extraction, Normalization & the Medical Engine ✅ COMPLETE *(full plan: docs/10)*
 
 Regex/table parsing into `LabResult` · synonym + unit normalization · reference-range logic (report-first, KB-fallback) · severity banding · conservative urgency roll-up. **The safety-critical sprint — pure deterministic Python, heaviest testing of the project.**
-**Milestone:** text in → flagged, severity-ranked, urgency-assessed results out, zero AI involved.
+**Milestone:** text in → flagged, severity-ranked, urgency-assessed results out, zero AI involved. Decisions #018–#022 logged; an end-to-end integration test turns the CBC fixture into a Consult-Soon verdict.
 
 ## Sprint 5 — The AI Layer *(outline)*
 

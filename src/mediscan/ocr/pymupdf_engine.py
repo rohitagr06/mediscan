@@ -25,9 +25,11 @@ class PyMuPdfEngine(OcrEngine):
     def extract(self, path: Path) -> ExtractedDocument:
         """Read every page's text. Raises CorruptDocumentError if unreadable.
 
-        Note `raise ... from err` below: it CHAINS the original PyMuPDF
-        error onto ours, so a debugger sees both our clean message and
-        the library's raw reason. Chaining preserves evidence.
+        Opening (and its error handling) lives in the shared
+        ocr/_pdf.open_pdf helper: it turns a raw PyMuPDF failure into a
+        clean CorruptDocumentError while CHAINING the original error
+        (raise ... from err), so a debugger still sees the library's raw
+        reason. Chaining preserves evidence.
         """
         document = open_pdf(path)
         with document:  # pymupdf documents are context managers too

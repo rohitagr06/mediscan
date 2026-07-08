@@ -115,3 +115,46 @@ unreliable, route around it with one you trust.
 **Carried forward:** observability is still entirely absent — the
 architecture note now says so explicitly, so no one assumes logging
 exists. It arrives in Sprint 7.
+
+## Sprint 4 — Extraction, Normalization & the Deterministic Medical Engine (retro)
+
+**What we built:** the safety-critical core. A tolerant line parser
+(text → `LabResult`s, unreadable lines preserved, never a crash),
+name/unit normalization as data, report-first/KB-fallback range
+resolution, hybrid severity banding (Option B fraction-toward-critical
+where the KB has sourced thresholds, Option A percentage-from-boundary
+capped at HIGH where it does not — #020), a pure `assess_lab_result`
+that never mutates its input (#021), and a conservative urgency roll-up
+where the worst finding wins and one Critical forces Seek Immediate Care
+(#022). An end-to-end integration test now turns the CBC fixture into a
+Consult-Soon verdict with zero AI involved.
+
+**Parse vs. judge, kept honest:** the biggest design win was refusing to
+let judging logic leak into the parser. The parser reports what it read;
+the engine decides what it means. Because the engine is pure functions,
+the truth-table tests are exhaustive and trivial — every band, both
+directions, every boundary value, all pinned.
+
+**Two safety instincts that paid off:** (1) config cutoffs get a
+cross-field validator so an inverted `.env` can't silently under-report
+severity; (2) "unknown never masquerades as fine" shows up twice — an
+un-assessable value floors urgency at Consult Soon, and the review caught
+that an all-mild report must not say "within normal limits".
+
+**A real gap found in review (open decision):** because the parser only
+accepts rows that print their own range (#018) and resolution is
+report-first, the KB's *critical* thresholds are never consulted in the
+real text→verdict flow — so CRITICAL is currently unreachable end-to-end.
+A critically low value in a report that prints a normal range would band
+as HIGH, not CRITICAL. The fix (attach KB critical thresholds to
+report-ranged values by canonical name, keeping the report's normal band)
+is consistent with #020 and is the top candidate for the next decision.
+
+**Process:** the file-bridge stale-copy problem returned hard — half the
+staged files were outdated. We routed around it by bundling the live tree
+into a single fresh file on disk and staging that, then verifying every
+file against its live checksum before reviewing. Trust, but checksum.
+
+**Carried forward:** the report-range/critical-threshold decision above;
+KB numbers are still STARTER values pending sourced review before any
+clinical use (#019); observability still absent until Sprint 7.

@@ -29,14 +29,24 @@ class ReferenceRangeEntry(MediScanModel):
     unit: str | None = Field(
         default=None, description="Canonical unit for this test, if any."
     )
-    low: float = Field(description="Lower bound of the normal adult range.")
-    high: float = Field(description="Upper bound of the normal adult range.")
+    # allow_inf_nan=False rejects NaN/Infinity. Without it a NaN bound
+    # would slip through the check_bounds comparison below (every
+    # comparison with NaN is False), silently disabling that bound — an
+    # "unknown masquerades as fine" hole (#011) hiding inside the KB.
+    low: float = Field(
+        allow_inf_nan=False, description="Lower bound of the normal adult range."
+    )
+    high: float = Field(
+        allow_inf_nan=False, description="Upper bound of the normal adult range."
+    )
     critical_low: float | None = Field(
         default=None,
+        allow_inf_nan=False,
         description="Value at/below which the result is critical.",
     )
     critical_high: float | None = Field(
         default=None,
+        allow_inf_nan=False,
         description="Value at/above which the result is critical.",
     )
     source: str = Field(

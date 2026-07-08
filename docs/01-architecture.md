@@ -2,16 +2,21 @@
 
 *Written for a beginner. Every stage explains **what** it does, **why** it exists, and the key tradeoff behind it.*
 
-> **Implementation status (end of Sprint 3):** ingestion & validation,
-> the text-vs-scan router, PyMuPDF text extraction, AND the full OCR path
+> **Implementation status (end of Sprint 4):** ingestion & validation,
+> the text-vs-scan router, PyMuPDF text extraction, the full OCR path
 > (PaddleOCR for images + scanned PDFs, image preprocessing, a
-> DocumentType→engine factory) are BUILT, tested, and security-hardened.
-> A photo or scanned PDF now yields text with a real confidence score.
-> Still design-only: structured extraction/parsing (Sprint 4), the
-> medical engine, RAG, the AI layer, observability, and presentation.
-> Decisions #011-#017 refined this design during implementation; a
-> Sprint-3 security audit added an image decompression-bomb guard,
-> bounded config knobs, a shared open_pdf helper, and a page-count cap.
+> DocumentType→engine factory), AND the full deterministic medical core
+> (tolerant line parser, name/unit normalization, report-first/KB-fallback
+> range resolution, hybrid severity banding, conservative urgency roll-up)
+> are BUILT, tested, and security-hardened. A document now flows end to
+> end to a severity- and urgency-assessed verdict with ZERO AI, proven by
+> an integration test on the CBC fixture.
+> Still design-only: RAG, the AI explanation layer, confidence scoring,
+> observability, and presentation (Gradio/PDF).
+> Decisions #011-#022 refined this design during implementation. A known
+> gap logged for a decision: report-supplied ranges currently bypass the
+> KB's critical thresholds, so CRITICAL is not yet reachable end-to-end —
+> see the note below.
 > NOTE: no logging/observability exists yet (scheduled for Sprint 7) —
 > nothing in the pipeline is observable at runtime today.
 

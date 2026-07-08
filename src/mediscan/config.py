@@ -62,8 +62,24 @@ class Settings(BaseSettings):
     # would otherwise render+OCR thousands of images (resource DoS).
     max_pdf_pages: int = Field(default=50, gt=0, le=500)
 
+    # Severity banding cutoffs (decision #020). These are the exact
+    # numbers the deterministic severity engine bands against, kept in
+    # config so a clinician can tune them without touching code.
+    #
+    # Option A (no sourced critical threshold) — bands by PERCENTAGE
+    # deviation from the nearest normal boundary; capped at HIGH:
+    #   deviation < pct_mild      -> MILD
+    #   deviation < pct_moderate  -> MODERATE
+    #   otherwise                 -> HIGH
     severity_pct_mild: float = Field(default=0.15, gt=0, lt=1)
     severity_pct_moderate: float = Field(default=0.30, gt=0, lt=1)
+    #
+    # Option B (a sourced critical threshold exists) — bands by the
+    # FRACTION of the way from the normal boundary toward the critical
+    # value (0.0 = at the boundary, 1.0 = at the critical line):
+    #   fraction < frac_mild      -> MILD
+    #   fraction < frac_moderate  -> MODERATE
+    #   otherwise                 -> HIGH (past the line -> CRITICAL)
     severity_frac_mild: float = Field(default=0.33, gt=0, lt=1)
     severity_frac_moderate: float = Field(default=0.66, gt=0, lt=1)
 

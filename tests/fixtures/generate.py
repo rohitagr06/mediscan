@@ -80,11 +80,23 @@ def make_text_lab_pdf(path: Path) -> None:
         c.drawString(x * mm, y, header)
     c.line(20 * mm, y - 2 * mm, 190 * mm, y - 2 * mm)
 
-    c.setFont("Helvetica", 9)
+    # Draw each result row as ONE text string, not five separate column
+    # cells. WHY: PyMuPDF (and every PDF text extractor) reconstructs one
+    # output line per drawn string. Cells drawn at separate x-positions
+    # come out as separate lines ("Hemoglobin" then "9.8" then ...), which
+    # the single-line lab parser (decision #018) cannot read. One string
+    # per row extracts as one line "Hemoglobin 9.8 g/dL 13.0 - 17.0 L",
+    # exactly the shape the parser expects. A monospace font keeps the
+    # padded columns visually aligned. (Real lab PDFs whose tables extract
+    # column-per-line need table reconstruction — an RC2 concern, #018.)
+    c.setFont("Courier", 9)
     y -= 8 * mm
     for name, value, unit, ref, flag in CBC_ROWS:
-        for x, cell in [(20, name), (85, value), (110, unit), (140, ref), (180, flag)]:
-            c.drawString(x * mm, y, cell)
+        # Single spaces between columns (no wide padding): big whitespace
+        # gaps make some extractors split one row into several lines, so
+        # we keep the row compact — "Hemoglobin 9.8 g/dL 13.0 - 17.0 L".
+        row = " ".join(part for part in (name, value, unit, ref, flag) if part)
+        c.drawString(20 * mm, y, row)
         y -= 7 * mm
 
     c.setFont("Helvetica", 8)

@@ -32,6 +32,11 @@ def prepare_image(source: Path, workdir: Path) -> Path:
     caller controls — in the real pipeline that is a SecureUploadDir,
     so cleanup of the copy stays guaranteed.
 
+    PHI note: the cleaned file is named prep_<source.name>, so `source`
+    is expected to be an already-de-identified stored upload (a
+    SecureUploadDir gives it a UUID name). Never pass a raw patient
+    filename here — that would write PHI into the temp filename.
+
     Returns the path of the cleaned image.
     """
     try:
