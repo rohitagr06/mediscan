@@ -86,6 +86,10 @@ class Settings(BaseSettings):
     # Low temperature = faithful, not creative. We want accuracy, not flair.
     llm_temperature: float = Field(default=0.2, ge=0, le=1)
 
+    # RAG: how many KB snippets to retrieve per query (bounded so a
+    # query can never dump the whole knowledge base into a prompt).
+    rag_top_k: int = Field(default=3, ge=1, le=20)
+
     # Severity banding cutoffs (decision #020). These are the exact
     # numbers the deterministic severity engine bands against, kept in
     # config so a clinician can tune them without touching code.

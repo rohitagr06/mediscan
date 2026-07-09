@@ -15,6 +15,8 @@ WHY THIS FILE EXISTS
 
 import zlib
 
+from chromadb import Documents, EmbeddingFunction, Embeddings
+
 
 def bge_embedding_function():
     """Return ChromaDB's BGE-small embedding function (real, production).
@@ -33,18 +35,18 @@ def bge_embedding_function():
     )
 
 
-class FakeEmbeddingFunction:
-    """A deterministic 'bag-of-words' embedder for tests — no model, no net.
+class FakeEmbeddingFunction(EmbeddingFunction):
+    """Deterministic bag-of-words embedder for tests — no model, no network.
 
-    It counts which word-buckets a text uses, so texts that SHARE WORDS get
-    similar vectors. That's enough for wiring/retrieval tests (a query about
-    'hemoglobin low' retrieves the hemoglobin-low snippet). It captures word
-    overlap, NOT real meaning — never use it in production.
+    Subclasses ChromaDB's EmbeddingFunction so it works for BOTH add() and
+    query(): the base class provides embed_documents/embed_query, which both
+    route to our __call__. Similar text (shared words) -> similar vectors;
+    it captures word overlap, NOT real meaning — never use in production.
     """
 
     _DIM = 64  # vector length; small is fine for tests
 
-    def __call__(self, input: list[str]) -> list[list[float]]:
+    def __call__(self, input: Documents) -> Embeddings:
         vectors: list[list[float]] = []
         for text in input:
             vec = [0.0] * self._DIM
@@ -56,6 +58,13 @@ class FakeEmbeddingFunction:
             vectors.append(vec)
         return vectors
 
-    def name(self) -> str:
-        # some ChromaDB versions ask an embedding function for a name
+    @staticmethod
+    def name() -> str:
         return "fake"
+
+    def get_config(self) -> dict:
+        return {}
+
+    @staticmethod
+    def build_from_config(config: dict) -> "EmbeddingFunction":
+        return FakeEmbeddingFunction()
