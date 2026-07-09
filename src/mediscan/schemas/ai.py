@@ -67,3 +67,8 @@ class ExplanationProvenance(MediScanModel):
     model: str | None = Field(default=None, description="Model id, if AI.")
     temperature: float | None = Field(default=None, description="Sampling temp, if AI.")
     timestamp: datetime = Field(description="When the output was produced (UTC).")
+    grounding_sources: list[str] = Field(
+        default_factory=list,
+        description="KB sources that grounded this output (empty on the "
+        "deterministic path). The explanation's audit trail (#028).",
+    )

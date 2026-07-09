@@ -177,6 +177,7 @@ def _explain(
     as_list: bool,
     deterministic: Callable[[], MediScanModel | list[MediScanModel]],
     now: Callable[[], datetime],
+    grounding_sources: list[str],
 ) -> Explanation:
     """Try AI (chain + validate + guardrail); on ANY failure, use the template."""
     try:
@@ -194,6 +195,7 @@ def _explain(
                     model=result.model,
                     temperature=settings.llm_temperature,
                     timestamp=now(),
+                    grounding_sources=grounding_sources,
                 ),
             )
     except LLMError:
@@ -222,6 +224,11 @@ def explain_report(
     verdict_facts = _facts_from_verdict(assessments, urgency)
     snippets = _grounding_snippets(assessments, retrieve_fn)
     facts = _augment_facts(verdict_facts, snippets)
+
+    # Unique sources, first-seen order. dict.fromkeys() drops duplicates while
+    # preserving order (a set would scramble it); list() gives back a plain list.
+    sources = list(dict.fromkeys(snip.source for snip in snippets))
+
     return ReportExplanations(
         patient=_explain(
             PatientSummaryPrompt(),
@@ -230,6 +237,7 @@ def explain_report(
             as_list=False,
             deterministic=lambda: templates.patient_summary(assessments, urgency),
             now=now,
+            grounding_sources=sources,
         ),
         doctor=_explain(
             DoctorSummaryPrompt(),
@@ -238,6 +246,7 @@ def explain_report(
             as_list=False,
             deterministic=lambda: templates.doctor_summary(assessments, urgency),
             now=now,
+            grounding_sources=sources,
         ),
         dietary=_explain(
             DietPrompt(),
@@ -246,6 +255,7 @@ def explain_report(
             as_list=True,
             deterministic=lambda: templates.dietary(assessments, urgency),
             now=now,
+            grounding_sources=sources,
         ),
         specialist=_explain(
             SpecialistPrompt(),
@@ -254,5 +264,6 @@ def explain_report(
             as_list=True,
             deterministic=lambda: templates.specialist(assessments, urgency),
             now=now,
+            grounding_sources=sources,
         ),
     )
