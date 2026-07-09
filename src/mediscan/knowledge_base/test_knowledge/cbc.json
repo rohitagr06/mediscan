@@ -1,0 +1,47 @@
+[
+    {
+      "test_name": "Hemoglobin",
+      "what_it_measures": "the amount of hemoglobin, an iron-rich protein in red blood cells that carries oxygen from the lungs to the rest of the body",
+      "low_meaning": "low hemoglobin commonly suggests anemia, although other blood disorders or medical conditions can also contribute",
+      "high_meaning": "high hemoglobin may occur with dehydration or conditions that increase red blood cell production; smoking and living at high altitude can also contribute",
+      "dietary_note": "if iron deficiency is the cause of low hemoglobin, iron-rich foods together with vitamin C may help improve iron absorption; dietary changes should be based on the underlying cause",
+      "specialist": "Hematologist",
+      "source": "MedlinePlus Medical Test: Hemoglobin Test (Updated Oct 27, 2024)"
+    },
+    {
+      "test_name": "Total Leukocyte Count",
+      "what_it_measures": "the total number of white blood cells, which help the body fight infection and respond to inflammation",
+      "low_meaning": "a low white blood cell count may be associated with certain viral infections, medications, autoimmune disorders, or bone marrow conditions",
+      "high_meaning": "a high white blood cell count may suggest infection, inflammation, physical stress, or, less commonly, certain blood disorders",
+      "dietary_note": "no specific food reliably changes the white blood cell count; a balanced diet supports overall immune health",
+      "specialist": "Hematologist",
+      "source": "MedlinePlus: Complete Blood Count (CBC) / CBC Blood Test (Updated Oct 2024)"
+    },
+    {
+      "test_name": "Platelet Count",
+      "what_it_measures": "the number of platelets, the blood cell fragments that help form clots and reduce bleeding",
+      "low_meaning": "a low platelet count may increase the risk of bruising or bleeding and can have many possible causes",
+      "high_meaning": "a high platelet count may occur in response to infection, inflammation, iron deficiency, or, less commonly, bone marrow disorders",
+      "dietary_note": "there is no specific diet proven to directly raise or lower platelet counts; maintaining good overall nutrition is generally recommended",
+      "specialist": "Hematologist",
+      "source": "MedlinePlus: Complete Blood Count (CBC) / Blood Count Tests (Updated Oct 2024)"
+    },
+    {
+      "test_name": "Hematocrit",
+      "what_it_measures": "the percentage of your blood volume made up of red blood cells",
+      "low_meaning": "a low hematocrit may indicate anemia, blood loss, or other conditions affecting red blood cells",
+      "high_meaning": "a high hematocrit may occur with dehydration or conditions that increase red blood cell production",
+      "dietary_note": "adequate hydration is important, and if anemia is due to iron deficiency, iron-rich foods may be recommended",
+      "specialist": "Hematologist",
+      "source": "MedlinePlus Medical Test: Hematocrit Test (Updated Nov 25, 2024)"
+    },
+    {
+      "test_name": "MCV",
+      "what_it_measures": "the average size of your red blood cells (Mean Corpuscular Volume)",
+      "low_meaning": "a low MCV means red blood cells are smaller than average and is commonly seen with iron deficiency anemia or certain inherited blood disorders",
+      "high_meaning": "a high MCV means red blood cells are larger than average and may be associated with vitamin B12 deficiency, folate deficiency, liver disease, alcohol use, or certain medications",
+      "dietary_note": "when nutritional deficiency is the cause, iron, vitamin B12, or folate intake may be important depending on the underlying diagnosis",
+      "specialist": "Hematologist",
+      "source": "MedlinePlus: Complete Blood Count (CBC) and CBC Blood Test (Updated Oct 2024)"
+    }
+  ]
