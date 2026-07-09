@@ -3,7 +3,7 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-08 (end of Sprint 4 + decision #023; Sprint 5 planned, not started)
+**Last updated:** 2026-07-09 (Sprint 5 COMPLETE — AI explanation layer built, tested, verified live)
 
 ---
 
@@ -42,24 +42,30 @@ by deterministic Python; AI only ever *explains* what the rules decided**
 
 ## Current position
 
-**Sprints 0–4 are COMPLETE, including decision #023.** The deterministic
-pipeline works end to end: document → parse → normalize → resolve ranges
-→ severity → urgency → verdict, ZERO AI, fully tested. **Sprint 5 (the AI
-explanation layer) is fully PLANNED in `docs/11-sprint-5-plan.md` but NOT
-started.**
+**Sprints 0–5 are COMPLETE.** Deterministic pipeline: document → parse →
+normalize → resolve ranges (KB criticals merged, #023) → severity →
+urgency, zero AI. AI explanation layer (Sprint 5): one medicine-blind
+`LLMClient` contract; ONE `OpenAICompatibleProvider` driving Gemini +
+GitHub Models via the openai SDK (#024 — Rohit's design); versioned
+PromptTemplates with injection fencing (#025); structured output with one
+repair-retry; resilient chain with backoff; deterministic template floor;
+regex guardrail block-and-fall-back (#026); ExplanationProvenance on every
+output. All verified LIVE (all four outputs via gemini-2.5-flash). 240
+tests passing on Rohit's Mac. Working agreement: EVERY task ends with git
+sync instructions (add/commit/push).
 
 ## This session's accomplishments
 
-- Finished Sprint 4: severity engine (#020/#021), urgency roll-up (#022),
-  exhaustive truth-table + adversarial tests, the 4.10 end-to-end
-  integration test, and sprint-close docs.
-- Fixed a fixture bug: `cbc_report.pdf` drew table cells separately so
-  PyMuPDF extracted one token per line; regenerated it to one line per row.
-- Full codebase review (added beginner comments/docstrings; hardened KB
-  against NaN/Infinity; fixed an urgency wording bug where all-mild reports
-  said "within normal limits").
-- **Decision #023 implemented end to end** (the big one — see below).
-- Planned Sprint 5 (`docs/11`).
+- Closed Sprint 4 (#020–#023) and executed ALL of Sprint 5 (tasks 5.1–5.12):
+  secrets in config, LLMClient contract, versioned PromptTemplates,
+  structured output + repair-retry, unified OpenAI-compatible provider
+  (Rohit's one-SDK insight, #024), resilient chain, deterministic
+  templates, guardrail, assembly with provenance, mock-first test suite
+  (happy + adversarial), sprint-close docs (#024–#026).
+- Survived a real Gemini 429 on first live call — switched model to
+  gemini-2.5-flash; the error normalization worked as designed.
+- Each task committed + pushed individually (new standing rule: every task
+  ends with git sync instructions).
 
 ## Key decisions (full log in docs/04; most relevant recent ones)
 
@@ -87,42 +93,41 @@ started.**
   family, ingestion (validation/storage/secure temp), OCR (PyMuPDF +
   PaddleOCR + preprocessing + router + factory), extraction (parser +
   normalization), medical engine (ranges + severity + urgency + KB loader).
-- Sprint-5 packages (`ai/`, `ai/providers/`, `safety/`, `prompts/`,
-  `rag/`, `reports/`, `ui/`, `orchestration/`, `confidence/`) exist as
-  EMPTY stubs — to be filled starting Sprint 5.
-- Tests all green on Rohit's Mac after #023 (last sandbox run: 200 passed,
-  1 skipped for the non-OCR subset; ruff clean).
+- AI layer (Sprint 5) BUILT: `schemas/ai.py` (LLMRequest/LLMResponse/
+  ExplanationProvenance), `ai/base.py` (LLMClient ABC), `ai/exceptions.py`
+  (LLMError, AllProvidersFailed), `ai/prompts.py` (4 versioned templates),
+  `ai/structured.py` (validate + one repair), `ai/providers/
+  openai_compatible.py` (one class, 3 builders), `ai/chain.py`
+  (backoff fallback), `ai/templates.py` (deterministic floor),
+  `ai/explain.py` (assembly), `safety/guardrail.py` (regex block).
+  Still-empty stubs: `rag/`, `reports/`, `ui/`, `orchestration/`,
+  `confidence/`.
+- Tests: 240 passed / 2 deselected on Rohit's Mac (incl. 14 AI-layer
+  tests, all mock-first — no keys/network needed).
 - Knowledge base: `src/mediscan/knowledge_base/reference_ranges/cbc.json`
   — 5 CBC entries, but every `source` is still `"STARTER VALUE …"`.
 
 ## Open issues / blockers / homework (Rohit's to do)
 
-1. **Confirm #023 green + commit:** run `uv run pytest` on the Mac
-   (full suite incl. OCR), review the 11 #023 files via `git diff`, commit.
-2. **KB sourcing (#019):** replace every `"STARTER VALUE"` in `cbc.json`
+1. **KB sourcing (#019):** replace every `"STARTER VALUE"` in `cbc.json`
    with a real cited source BEFORE any clinical use. Blocks real use.
-3. **Sprint-4 architecture reflection exercise:** 5 sentences on why
-   severity must be deterministic (#006 in his own words), in docs/06.
-4. Minor/nominal: Sprint-0 "break the CI" exercise still open.
+2. **Architecture reflection exercises:** Sprint-4 (why deterministic
+   severity) and Sprint-5 (why validate+guardrail despite a careful
+   prompt) — 5 sentences each in docs/06.
+3. Minor/nominal: Sprint-0 "break the CI" exercise still open.
 
-No hard blockers for starting Sprint 5.
+No hard blockers for starting Sprint 6.
 
 ## Exact next steps (to resume)
 
-1. Confirm #023 is committed and green (item 1 above).
-2. Start **Sprint 5, task 5.1** from `docs/11-sprint-5-plan.md`: add the AI
-   API keys to `config.py` as `SecretStr` (`gemini_api_key`,
-   `github_models_token`) plus bounded AI knobs (timeout, retries,
-   temperature, model IDs), and update `.env.example`. Rohit has BOTH a
-   Gemini free-tier key and a GitHub Models token.
-3. Then proceed 5.2 → 5.12 in order (contract → prompts → structured output
-   → providers → resilient chain → deterministic templates → guardrail →
-   assemble 4 outputs → tests → close).
+1. Rohit commits the Sprint-5 close docs (04/01/03/06 + project-status.md)
+   and confirms CI green — the last step of task 5.12.
+2. Then plan **Sprint 6 — RAG & the Knowledge Base** (roadmap outline:
+   curated KB content, ChromaDB + BGE-small embeddings, retrieval into the
+   existing 5.3 prompt seam — only WHERE facts come from changes).
+3. RC2/parked notes: honor 429 retryDelay in the chain; wire
+   ReportExplanations into AnalysisReport (Sprint 7 orchestration);
+   BandingPolicy; tuple returns; frozen models (#013).
 
-**Sprint 5 confirmed choices:** full Gemini → GPT-4.1-mini → Phi-4 →
-deterministic chain; AI generates all four outputs (patient, doctor,
-dietary, specialist); fallback = deterministic template summary.
-
-**SDKs (verify current at build):** `google-genai` (`from google import
-genai`) for Gemini; `openai` SDK pointed at the GitHub Models endpoint for
-both GitHub fallbacks.
+**Gemini note:** free tier worked with model `gemini-2.5-flash`
+(gemini-2.0-flash had limit 0). Both keys live in Rohit's .env.

@@ -163,3 +163,38 @@ file against its live checksum before reviewing. Trust, but checksum.
 review before any clinical use (#019); observability still absent until
 Sprint 7. #023's derived `critical_source` assumes criticals are KB-only —
 revisit if reports ever print their own.
+
+## Sprint 5 — The AI Explanation Layer (retro)
+
+**What we built:** the AI *platform*, not just AI features. One
+medicine-blind `LLMClient` contract; ONE `OpenAICompatibleProvider` class
+that is all three rungs of the #004 chain (Gemini, GPT-4.1-mini, Phi-4) as
+configs; versioned `PromptTemplate` objects whose `build()` fences facts
+against prompt injection; `generate_structured` with exactly one
+repair-retry; a resilient chain with exponential backoff; deterministic
+templates as the no-AI floor; a regex guardrail that blocks
+dosage/prescription/diagnosis language and falls back to those templates;
+and `ExplanationProvenance` on every output. Verified live end to end.
+
+**The best design move was Rohit's:** collapsing two SDKs into one. The
+original plan had `google-genai` for Gemini and `openai` for GitHub
+Models; Rohit spotted that both endpoints speak the OpenAI API, so the
+whole provider layer became one class + three builder functions (#024).
+Fewer dependencies, one place for timeouts/secrets/errors.
+
+**A real 429 proved the design early:** Gemini's free tier rate-limited us
+on the very first live call (limit 0 for that model id). The provider
+normalized it to a clean `LLMError` with no key and no content leaked —
+and it made the case for the chain + deterministic floor better than any
+argument could.
+
+**Testing lesson:** the first adversarial suite draft was slow (43s) and
+had one failure — the chain was really sleeping through backoff in tests,
+and a one-shape fake couldn't serve four prompts. Fixes: an autouse
+fixture zeroing retries (never sleep in tests) and a shape-aware fake.
+Mock-first now runs in 0.08s with no keys and no network.
+
+**Carried forward:** grounding facts are hand-fed this sprint; Sprint 6
+(RAG) changes only where they come from. Honor a 429's `retryDelay` in
+the chain (RC2). Wire `ReportExplanations` into `AnalysisReport` during
+Sprint 7 orchestration. KB sourcing homework (#019) still open.
