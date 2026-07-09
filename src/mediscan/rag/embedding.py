@@ -47,11 +47,11 @@ class FakeEmbeddingFunction(EmbeddingFunction):
     _DIM = 64  # vector length; small is fine for tests
 
     def __init__(self) -> None:
-        # ChromaDB now expects every embedding function to define __init__
-        # (a future version will require it). There's nothing to configure for
-        # the fake, so this simply satisfies that contract and silences the
-        # DeprecationWarning.
-        super().__init__()
+        # ChromaDB's base EmbeddingFunction.__init__ is a stub that does nothing
+        # but emit a DeprecationWarning ("should be overridden"). So we override
+        # it and deliberately do NOT call super().__init__() — defining our own
+        # (with nothing to configure for the fake) is exactly what silences it.
+        pass
 
     def __call__(self, input: Documents) -> Embeddings:
         vectors: list[list[float]] = []
