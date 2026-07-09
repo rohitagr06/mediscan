@@ -17,8 +17,17 @@ from typing import NamedTuple
 
 
 class GuardrailResult(NamedTuple):
+    """The outcome of one guardrail check.
+
+    Attributes:
+        passed: True if the text is safe to show; False if a rule tripped.
+        category: The rule category that tripped (e.g. "medication_dose"),
+            or None when passed. Deliberately a CATEGORY, never the offending
+            text, so nothing PHI-adjacent leaks into logs.
+    """
+
     passed: bool
-    category: str | None = None  # which rule tripped, never the text itself
+    category: str | None = None
 
 
 # (category, pattern). Patterns are tuned to catch clear violations while
@@ -48,7 +57,16 @@ _FORBIDDEN: list[tuple[str, re.Pattern[str]]] = [
 
 
 def check(text: str) -> GuardrailResult:
-    """Return pass, or fail with the category that tripped."""
+    """Check one piece of AI-generated text for forbidden medical content.
+
+    Args:
+        text: The AI output string to screen (e.g. a summary's text field).
+
+    Returns:
+        GuardrailResult(passed=True) if no rule matched, else
+        GuardrailResult(passed=False, category=<rule name>). Callers treat a
+        failure as "discard this AI output and use the deterministic template".
+    """
     for category, pattern in _FORBIDDEN:
         if pattern.search(text):
             return GuardrailResult(passed=False, category=category)

@@ -47,6 +47,16 @@ def _describe(a: SeverityAssessment) -> str:
 def patient_summary(
     assessments: list[SeverityAssessment], urgency: UrgencyAssessment
 ) -> PatientSummary:
+    """Write a plain-language patient summary from the verdict, no AI.
+
+    Args:
+        assessments: One SeverityAssessment per lab value (the judged verdict).
+        urgency: The rolled-up urgency for the whole report.
+
+    Returns:
+        A PatientSummary whose text names the notable findings and the
+        suggested next step; an all-normal report gets a reassuring note.
+    """
     notable = _notable(assessments)
     step = _URGENCY_PHRASE[urgency.level]
     if not notable:
@@ -66,6 +76,16 @@ def patient_summary(
 def doctor_summary(
     assessments: list[SeverityAssessment], urgency: UrgencyAssessment
 ) -> DoctorSummary:
+    """Write a concise clinician-facing summary from the verdict, no AI.
+
+    Args:
+        assessments: One SeverityAssessment per lab value.
+        urgency: The rolled-up urgency for the whole report.
+
+    Returns:
+        A DoctorSummary: a one-line overview plus one clinical note per
+        notable finding (or an all-in-range note).
+    """
     notable = _notable(assessments)
     notes = [_describe(a) for a in notable] or ["All assessed values within range."]
     text = (
@@ -78,6 +98,18 @@ def doctor_summary(
 def dietary(
     assessments: list[SeverityAssessment], urgency: UrgencyAssessment
 ) -> list[DietaryConsideration]:
+    """Return informational-only dietary notes from the verdict, no AI.
+
+    Args:
+        assessments: One SeverityAssessment per lab value (unused today; kept
+            for signature parity with the AI path and future per-test notes).
+        urgency: The rolled-up urgency (unused today, same reason).
+
+    Returns:
+        A single generic, informational DietaryConsideration. There is no
+        per-test diet knowledge base yet (RC2), so the deterministic floor
+        stays deliberately generic and safe.
+    """
     # No test-specific diet knowledge base yet (RC2), so the deterministic
     # floor gives one safe, generic informational note.
     return [
@@ -94,6 +126,18 @@ def dietary(
 def specialist(
     assessments: list[SeverityAssessment], urgency: UrgencyAssessment
 ) -> list[SpecialistSuggestion]:
+    """Suggest a specialist category from the verdict, no AI.
+
+    Args:
+        assessments: One SeverityAssessment per lab value.
+        urgency: The rolled-up urgency (unused today).
+
+    Returns:
+        One general-review SpecialistSuggestion when any finding is notable,
+        or an empty list when everything is normal. The deterministic floor
+        does not name specialties beyond "General Practitioner" (no sourced
+        test-to-specialist mapping yet — RC2).
+    """
     notable = _notable(assessments)
     if not notable:
         return []

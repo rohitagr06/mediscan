@@ -32,11 +32,21 @@ from mediscan.schemas.medical import SeverityAssessment
 
 
 class Explanation(NamedTuple):
+    """One produced output paired with how it was produced.
+
+    Attributes:
+        content: The validated schema object (or list of them) — the actual
+            summary/notes/suggestions.
+        provenance: Where it came from (ai vs deterministic, prompt, model...).
+    """
+
     content: MediScanModel | list[MediScanModel]
     provenance: ExplanationProvenance
 
 
 class ReportExplanations(NamedTuple):
+    """The four grounded outputs for one report, each with its provenance."""
+
     patient: Explanation
     doctor: Explanation
     dietary: Explanation
@@ -65,8 +75,15 @@ def _facts_from_verdict(
     return "\n".join(lines)
 
 
-def _all_strings(obj) -> list[str]:
-    """Collect every string in a dumped model (for guardrailing)."""
+def _all_strings(obj: object) -> list[str]:
+    """Recursively collect every string in a dumped model (for guardrailing).
+
+    Args:
+        obj: A value from ``model_dump()`` — a str, dict, list, or scalar.
+
+    Returns:
+        Every string found anywhere inside ``obj`` (nested dicts/lists included).
+    """
     if isinstance(obj, str):
         return [obj]
     if isinstance(obj, dict):

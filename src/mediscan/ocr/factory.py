@@ -15,6 +15,8 @@ WHY THIS DESIGN
     document types to their extraction engines.
 """
 
+from functools import cache
+
 from mediscan.ocr.base import OcrEngine
 from mediscan.ocr.paddle_engine import PaddleOcrEngine
 from mediscan.ocr.pymupdf_engine import PyMuPdfEngine
@@ -28,13 +30,27 @@ _ENGINE_FOR_TYPE: dict[DocumentType, type[OcrEngine]] = {
 }
 
 
+@cache
 def get_engine_for(doc_type: DocumentType) -> OcrEngine:
     """Return the OCR engine responsible for the given document type.
 
-    Each supported DocumentType has exactly one registered extraction
-    engine. A ValueError is raised if no engine is registered because
-    that indicates a programming/configuration error rather than a user
-    error.
+    The result is CACHED per document type (``@cache``): PaddleOCR lazily
+    loads a ~200 MB model into each engine instance, so returning a fresh
+    engine on every call would reload that model for every document. One
+    instance per type means the model is built at most once per process.
+    (RC1 is single-threaded; Sprint 7's async orchestration should revisit
+    whether the PaddleOCR-backed engines need per-worker instances.)
+
+    Args:
+        doc_type: The document category decided by the router.
+
+    Returns:
+        The shared OcrEngine instance registered for ``doc_type``.
+
+    Raises:
+        ValueError: If no engine is registered for ``doc_type`` — this is a
+            programming/configuration error, not a user error. (``@cache``
+            does not cache exceptions, so this re-raises on every bad call.)
     """
     try:
         engine_class = _ENGINE_FOR_TYPE[doc_type]

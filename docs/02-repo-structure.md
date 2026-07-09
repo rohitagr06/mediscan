@@ -2,6 +2,14 @@
 
 *A repo layout is a map of responsibilities. If you always know where a thing "should" live, you never create spaghetti. This layout is a modular monolith: one app, clean internal domains, ready to grow into RC2/RC3 without reshuffling.*
 
+> **Note:** this document shows the **target** layout for the finished RC1,
+> including modules not yet built (e.g. `rag/`, `reports/`, `ui/`,
+> `orchestration/`) and some names that evolved during implementation (e.g.
+> AI providers are now one `ai/providers/openai_compatible.py`, prompts live
+> in `ai/prompts.py`). For a map of what is **actually built today** and how
+> a request flows through it, see
+> [docs/12-understanding-the-codebase.md](12-understanding-the-codebase.md).
+
 ---
 
 ```

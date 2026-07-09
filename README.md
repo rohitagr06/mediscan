@@ -73,6 +73,7 @@ Note: the OCR tests are marked `slow` and excluded from the default run. Run the
 | [Reflections & retros](docs/06-reflections.md) | Per-sprint lessons learned |
 | [Project starter playbook](docs/07-python-project-starter-playbook.md) | Reusable setup pipeline for any Python project |
 | [Sprint plans](docs/) | Detailed just-in-time plans: docs/08 (S2), 09 (S3), 10 (S4), 11 (S5) |
+| [**Understanding this codebase**](docs/12-understanding-the-codebase.md) | **New-contributor onboarding guide — start here if you're new** |
 | [Project status](project-status.md) | Live single-source-of-truth for resuming work |
 
 ## Tech stack (RC1)

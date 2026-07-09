@@ -41,6 +41,7 @@ def generate_with_fallback(
     `sleep` is injectable so tests run instantly (pass a no-op).
     Raises AllProvidersFailed only when every provider is exhausted.
     """
+    last_error: LLMError | None = None
     for provider in providers:
         for attempt in range(settings.llm_max_retries + 1):
             try:
@@ -50,11 +51,14 @@ def generate_with_fallback(
                     provider_name=provider.provider_name,
                     model=getattr(provider, "model", ""),
                 )
-            except LLMError:
-                # Transient (429 / timeout) or a bad-output failure. Back off
-                # and retry the SAME provider; if it's the last attempt, the
-                # inner loop ends and we fall to the next provider.
+            except LLMError as err:
+                # Transient (429 / timeout) or a bad-output failure. Keep the
+                # most recent error so the final AllProvidersFailed can chain
+                # it for debugging. Back off and retry the SAME provider; if
+                # it's the last attempt, fall through to the next provider.
+                last_error = err
                 if attempt < settings.llm_max_retries:
                     sleep(2**attempt)  # 1s, 2s, 4s, ...
 
-    raise AllProvidersFailed("all AI providers failed")
+    # Chain the last underlying failure (429/timeout/validation) as the cause.
+    raise AllProvidersFailed("all AI providers failed") from last_error

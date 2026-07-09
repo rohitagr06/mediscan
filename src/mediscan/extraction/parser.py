@@ -44,6 +44,10 @@ _LAB_LINE = re.compile(
     r"\s*$"  # optional trailing spaces, end
 )
 
+# A real lab row is well under this. Lines longer than this are skipped
+# before the regex to avoid pathological backtracking (ReDoS hardening).
+_MAX_LINE_LENGTH = 300
+
 
 def parse_lab_text(text: str) -> ParseOutcome:
     """Parse document text into lab results, tolerantly.
@@ -60,6 +64,14 @@ def parse_lab_text(text: str) -> ParseOutcome:
         line = raw_line.strip()
 
         if not line:
+            continue
+
+        # A real lab row is short. Skipping absurdly long lines before the
+        # regex is a cheap guard against pathological backtracking on a
+        # hostile all-letters/spaces line (ReDoS hardening); such a line is
+        # never a lab row anyway, so it is recorded as unparsed.
+        if len(line) > _MAX_LINE_LENGTH:
+            unparsed_lines.append(line)
             continue
 
         match = _LAB_LINE.match(line)
