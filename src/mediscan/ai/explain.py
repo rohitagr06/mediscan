@@ -25,6 +25,7 @@ from mediscan.ai.prompts import (
     SpecialistPrompt,
 )
 from mediscan.config import settings
+from mediscan.rag.retriever import RetrievedSnippet, retrieve
 from mediscan.safety.guardrail import check
 from mediscan.schemas import ExplanationProvenance, ExplanationSource, UrgencyAssessment
 from mediscan.schemas.base import MediScanModel
@@ -72,6 +73,72 @@ def _facts_from_verdict(
             f"direction {direction}, normal range {rng_txt}"
         )
     lines.append(f"Overall urgency: {urgency.level.value}.")
+    return "\n".join(lines)
+
+
+def _grounding_snippets(
+    assessments: list[SeverityAssessment],
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]],
+) -> list[RetrievedSnippet]:
+    """Retrieve curated KB background for each ABNORMAL finding, de-duplicated.
+
+    For every abnormal finding we build a short query from its test name and
+    direction (e.g. "Hemoglobin low: what does it mean?") and ask the KB for
+    the closest snippets. Normal findings are skipped — they need no
+    explanation. Retrieval is wrapped in try/except so a RAG failure can NEVER
+    break the explanation (graceful degradation, #006 spirit): worst case we
+    fall back to the verdict facts alone.
+
+    Args:
+        assessments: The deterministic per-test judgments.
+        retrieve_fn: query -> snippets. The real retriever in production; a
+            fake one injected in tests (so no model/network is needed).
+
+    Returns:
+        Retrieved snippets across all abnormal findings, first-seen order,
+        with duplicates (same text + source) removed.
+    """
+    seen: set[tuple[str, str]] = set()
+    collected: list[RetrievedSnippet] = []
+    for a in assessments:
+        if a.abnormal_direction is None:
+            continue  # normal value -> nothing to explain, skip it
+        query = f"{a.test_name} {a.abnormal_direction.value}: what does it mean?"
+        try:
+            snippets = retrieve_fn(query)
+        except Exception:  # noqa: BLE001 - RAG must never break the explanation
+            snippets = []
+        for snip in snippets:
+            key = (snip.text, snip.source)
+            if key not in seen:
+                seen.add(key)
+                collected.append(snip)
+    return collected
+
+
+def _augment_facts(verdict_facts: str, snippets: list[RetrievedSnippet]) -> str:
+    """Append retrieved KB background (each with its source) under the verdict.
+
+    The deterministic numbers stay on top exactly as before; RAG only ADDS a
+    sourced "BACKGROUND KNOWLEDGE" section beneath them. If nothing was
+    retrieved, the facts are unchanged — the AI still explains from the verdict.
+
+    Args:
+        verdict_facts: The deterministic FACTS text from ``_facts_from_verdict``.
+        snippets: Retrieved KB snippets to fold in (may be empty).
+
+    Returns:
+        The combined FACTS string that goes into the prompt.
+    """
+    if not snippets:
+        return verdict_facts
+    lines = [
+        verdict_facts,
+        "",
+        "BACKGROUND KNOWLEDGE (from our curated knowledge base — use ONLY these "
+        "facts, do not add outside knowledge):",
+    ]
+    lines.extend(f"- {snip.text} [source: {snip.source}]" for snip in snippets)
     return "\n".join(lines)
 
 
@@ -149,9 +216,12 @@ def explain_report(
     providers: list[LLMClient],
     *,
     now: Callable[[], datetime] = _utcnow,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
 ) -> ReportExplanations:
     """Produce all four grounded, guardrailed, provenance-tagged outputs."""
-    facts = _facts_from_verdict(assessments, urgency)
+    verdict_facts = _facts_from_verdict(assessments, urgency)
+    snippets = _grounding_snippets(assessments, retrieve_fn)
+    facts = _augment_facts(verdict_facts, snippets)
     return ReportExplanations(
         patient=_explain(
             PatientSummaryPrompt(),

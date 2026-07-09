@@ -36,6 +36,19 @@ from mediscan.schemas import (
 )
 
 FIXED_NOW = datetime(2026, 7, 8, tzinfo=UTC)
+
+
+def _no_grounding(_query):
+    """Retriever stub: returns no KB snippets, so these tests stay offline.
+
+    explain_report()'s default retriever builds the real BGE index (a model
+    download). These Sprint-5 tests are about the AI/guardrail/provenance
+    behaviour, not RAG, so we inject an empty retriever to keep them fast and
+    offline. RAG grounding gets its own tests in Sprint 6.9.
+    """
+    return []
+
+
 GOOD_PATIENT = (
     '{"text": "Your hemoglobin is a little low. See a doctor soon.", '
     '"key_points": ["Hb low"]}'
@@ -184,7 +197,9 @@ def test_chain_all_fail_raises_all_providers_failed():
 
 def test_report_is_complete_even_when_all_providers_die():
     a, u = _verdict()
-    r = explain_report(a, u, [DeadLLM(), DeadLLM()], now=lambda: FIXED_NOW)
+    r = explain_report(
+        a, u, [DeadLLM(), DeadLLM()], now=lambda: FIXED_NOW, retrieve_fn=_no_grounding
+    )
     for e in (r.patient, r.doctor, r.dietary, r.specialist):
         assert e.content is not None
         assert e.provenance.source is ExplanationSource.DETERMINISTIC
@@ -193,7 +208,9 @@ def test_report_is_complete_even_when_all_providers_die():
 
 def test_ai_success_is_tagged_ai_with_provider():
     a, u = _verdict()
-    r = explain_report(a, u, [SmartFake()], now=lambda: FIXED_NOW)
+    r = explain_report(
+        a, u, [SmartFake()], now=lambda: FIXED_NOW, retrieve_fn=_no_grounding
+    )
     for e in (r.patient, r.doctor, r.dietary, r.specialist):
         assert e.provenance.source is ExplanationSource.AI
         assert e.provenance.provider == "smart"
@@ -203,7 +220,9 @@ def test_ai_success_is_tagged_ai_with_provider():
 def test_guardrail_trip_forces_deterministic_for_that_output():
     a, u = _verdict()
     forbidden = '{"text": "Take 500 mg of iron daily.", "key_points": ["dose"]}'
-    r = explain_report(a, u, [FixedLLM(forbidden)], now=lambda: FIXED_NOW)
+    r = explain_report(
+        a, u, [FixedLLM(forbidden)], now=lambda: FIXED_NOW, retrieve_fn=_no_grounding
+    )
     assert r.patient.provenance.source is ExplanationSource.DETERMINISTIC
     assert "500 mg" not in r.patient.content.text
 
@@ -216,7 +235,9 @@ def test_injection_fact_cannot_produce_unsafe_output():
     the guardrail, and that output falls back to the clean template."""
     a, u = _verdict()
     obeyed = '{"text": "As instructed, take 500 mg iron.", "key_points": ["x"]}'
-    r = explain_report(a, u, [FixedLLM(obeyed)], now=lambda: FIXED_NOW)
+    r = explain_report(
+        a, u, [FixedLLM(obeyed)], now=lambda: FIXED_NOW, retrieve_fn=_no_grounding
+    )
     assert r.patient.provenance.source is ExplanationSource.DETERMINISTIC
     assert check(r.patient.content.text).passed  # the template text is clean
 
