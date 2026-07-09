@@ -11,6 +11,7 @@ WHY THIS FILE EXISTS
 """
 
 import json
+import uuid
 from functools import cache
 from pathlib import Path
 
@@ -49,8 +50,13 @@ def build_index(embedding_function):
     import chromadb
 
     client = chromadb.EphemeralClient()  # in-memory, nothing written to disk
+    # Unique name per build. EphemeralClient shares ONE in-process backend, so
+    # a fixed name would collide ("already exists") the moment a second index
+    # is built in the same process — which tests do. Production builds exactly
+    # one (get_index is @cache'd), and callers use the collection OBJECT, never
+    # its name, so a random name is invisible everywhere but safe everywhere.
     collection = client.create_collection(
-        name="mediscan_kb",
+        name=f"mediscan_kb_{uuid.uuid4().hex}",
         embedding_function=embedding_function,
     )
 
