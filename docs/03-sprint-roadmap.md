@@ -81,10 +81,15 @@ Regex/table parsing into `LabResult` · synonym + unit normalization · referenc
 `LLMClient` interface · Gemini + GitHub Models providers · resilient fallback chain (timeouts, backoff) · prompt templates in `prompts/` with prompt-injection defense · schema-validated structured output with repair-retry · four grounded outputs (patient, doctor, dietary, specialist) · deterministic template rung · guardrail pass.
 **Milestone:** grounded, safe, friendly summaries — that degrade gracefully when APIs die (works with ZERO functioning AI). Decisions #024-#026; verified live on Gemini + both GitHub models.
 
-## Sprint 6 — RAG & the Knowledge Base *(outline)*
+## Sprint 6 — RAG & the Knowledge Base *(full plan: docs/13)*
 
-Author the curated KB (ranges, test explanations, diet notes, specialist mapping) · ChromaDB + BGE-small embeddings · retrieval into prompts · grounding citations in explanations.
+Author the curated KB (test explanations, diet notes, specialist mapping) · ChromaDB + BGE-small embeddings (in-memory index) · retrieval into the existing prompt seam · grounding sources recorded on every explanation. Full RAG built now; KB-as-data scales to every lab type. RAG feeds the AI layer ONLY, never the deterministic engine (#006).
 **Milestone:** every AI explanation traceable to a KB source.
+
+## Sprint 6.5 — Full-Panel Scope Expansion *(outline; added per decision #027)*
+
+Extend the deterministic engine beyond CBC to a standard full-body checkup (KFT, lipid profile, electrolytes, vitamins, diabetes/HbA1c, thyroid, numeric urine), for BOTH sexes: the parser learns one-sided ranges (`< 200`, `> 40`, `< 5.7 %`); reference ranges become sex-aware with the patient's sex read from the report; author the multi-panel sourced reference-range + explanation KB (the RAG layer from Sprint 6 absorbs it with no code change). Qualitative urine/micro results deferred.
+**Milestone:** MediScan reads a standard full-body checkup report end to end.
 
 ## Sprint 7 — Confidence, Orchestration & Explainability *(outline)*
 

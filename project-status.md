@@ -11,7 +11,10 @@ between chats, so this file carries it. Read this FIRST every session.*
 
 "MediScan by DipsAI" — a production-grade, safety-first medical document
 analyzer. A lab report (PDF/photo) goes in; a validated, explainable
-analysis comes out. RC1 scope = English CBC-style lab reports. The core
+analysis comes out. **RC1 scope (revised, #027): a full-body health
+checkup for BOTH sexes — CBC, KFT, lipid profile, electrolytes, vitamins,
+diabetes/HbA1c, thyroid, numeric urine — NOT just CBC.** (The codebase
+today only handles CBC; the full-panel expansion is Sprint 6.5.) The core
 rule: **everything that could harm if wrong (severity, urgency) is decided
 by deterministic Python; AI only ever *explains* what the rules decided**
 (decision #006).
@@ -130,9 +133,14 @@ No hard blockers for starting Sprint 6.
 
 1. Rohit commits the Sprint-5 close docs (04/01/03/06 + project-status.md)
    and confirms CI green — the last step of task 5.12.
-2. Then plan **Sprint 6 — RAG & the Knowledge Base** (roadmap outline:
-   curated KB content, ChromaDB + BGE-small embeddings, retrieval into the
-   existing 5.3 prompt seam — only WHERE facts come from changes).
+2. **Sprint 6 — RAG & the Knowledge Base** is fully planned in
+   `docs/13-sprint-6-plan.md` (full RAG: ChromaDB + BGE-small, in-memory
+   index, grounding + traceability, built on the current CBC KB). Ready to
+   start at task 6.1.
+3. **Sprint 6.5 — Full-Panel Scope Expansion (#027):** the NEXT sprint after
+   6. Extend the parser to one-sided ranges, make ranges sex-aware (sex read
+   from the report), author the multi-panel sourced KB. The RAG layer built
+   in Sprint 6 absorbs the bigger KB with no code change.
 3. RC2/parked notes: honor 429 retryDelay in the chain; wire
    ReportExplanations into AnalysisReport (Sprint 7 orchestration);
    BandingPolicy; tuple returns; frozen models (#013).
