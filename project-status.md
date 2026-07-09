@@ -28,6 +28,14 @@ by deterministic Python; AI only ever *explains* what the rules decided**
   adversarial tests, reviews, unblocks. Rohit is a beginner — explain
   everything step by step (concept → why → steps → verification), in easy
   language, point-wise.
+- **⭐ EXPLAIN THE CODE ITSELF (Rohit is a Python BEGINNER).** Never hand
+  over a code block with only a one-line "why". For EVERY snippet, explain
+  how it works at beginner level: what each new construct means (decorator,
+  NamedTuple, lazy import, try/except/from, for/else, comprehension, `@cache`,
+  generics, etc.), why the line is written that way, and what would break
+  without it. Even when Rohit delegates ("you write it"), still explain the
+  code fully so he UNDERSTANDS what he's typing — never just copies it. This
+  drifted during Sprint 5's fast pace; Rohit corrected it. Do not drift again.
 - **Review surface:** Rohit reviews every change via `git diff` on his Mac
   before committing. Claude delivers files via SendUserFile + writes them
   to the Mac via the device bridge.
