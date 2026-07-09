@@ -1,0 +1,61 @@
+"""Embedding functions: text -> vector, for the RAG index.
+
+WHY THIS FILE EXISTS
+    ChromaDB needs an "embedding function" — a callable that takes a list of
+    texts and returns a list of vectors — to turn our knowledge snippets into
+    numbers it can search by similarity. This module provides two:
+
+      - the REAL one (BGE-small via sentence-transformers), for production;
+      - a tiny deterministic FAKE, for tests — so the fast test suite needs
+        no model download and no network.
+
+    Both satisfy ChromaDB's embedding-function shape: __call__(input) where
+    `input` is a list[str] and the return is a list of float-vectors.
+"""
+
+import zlib
+
+
+def bge_embedding_function():
+    """Return ChromaDB's BGE-small embedding function (real, production).
+
+    The heavy libraries are imported LAZILY (inside the function) so this
+    module loads even where chromadb/sentence-transformers aren't installed.
+
+    Returns:
+        A ChromaDB SentenceTransformerEmbeddingFunction backed by
+        BAAI/bge-small-en-v1.5 (downloads ~130 MB on first use, then cached).
+    """
+    from chromadb.utils import embedding_functions
+
+    return embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name="BAAI/bge-small-en-v1.5"
+    )
+
+
+class FakeEmbeddingFunction:
+    """A deterministic 'bag-of-words' embedder for tests — no model, no net.
+
+    It counts which word-buckets a text uses, so texts that SHARE WORDS get
+    similar vectors. That's enough for wiring/retrieval tests (a query about
+    'hemoglobin low' retrieves the hemoglobin-low snippet). It captures word
+    overlap, NOT real meaning — never use it in production.
+    """
+
+    _DIM = 64  # vector length; small is fine for tests
+
+    def __call__(self, input: list[str]) -> list[list[float]]:
+        vectors: list[list[float]] = []
+        for text in input:
+            vec = [0.0] * self._DIM
+            for word in text.lower().split():
+                # zlib.crc32 is a STABLE hash (same result every run, unlike
+                # Python's built-in hash() which is randomized per process).
+                bucket = zlib.crc32(word.encode()) % self._DIM
+                vec[bucket] += 1.0
+            vectors.append(vec)
+        return vectors
+
+    def name(self) -> str:
+        # some ChromaDB versions ask an embedding function for a name
+        return "fake"
