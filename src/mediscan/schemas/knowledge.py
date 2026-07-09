@@ -71,3 +71,58 @@ class ReferenceRangeEntry(MediScanModel):
                 f"above the normal high ({self.high})"
             )
         return self
+
+
+class KnowledgeSnippet(MediScanModel):
+    """One self-contained, sourced fact, ready to be embedded and retrieved."""
+
+    text: str = Field(min_length=1, description="The fact, as a short sentence.")
+    source: str = Field(min_length=1, description="Citation for this fact.")
+    test_name: str = Field(min_length=1, description="Test this fact is about.")
+
+
+class TestKnowledge(MediScanModel):
+    """Curated, sourced explanation content for one lab test.
+
+    Turned into individually-retrievable KnowledgeSnippets by to_snippets().
+    Every statement is informational, never a diagnosis or treatment.
+    """
+
+    test_name: str = Field(min_length=1, description="Canonical test name.")
+    what_it_measures: str = Field(min_length=1)
+    low_meaning: str = Field(min_length=1, description="What a low value can indicate.")
+    high_meaning: str = Field(
+        min_length=1, description="What a high value can indicate."
+    )
+    dietary_note: str | None = Field(default=None)
+    specialist: str | None = Field(default=None)
+    source: str = Field(min_length=1, description="Citation — mandatory (#019).")
+
+    def to_snippets(self) -> list[KnowledgeSnippet]:
+        """Split this entry into one sourced snippet per idea (chunking)."""
+
+        def snip(text: str) -> KnowledgeSnippet:
+            # every snippet carries the SAME source + test_name as this entry
+            return KnowledgeSnippet(
+                text=text, source=self.source, test_name=self.test_name
+            )
+
+        snippets = [
+            snip(f"{self.test_name}: {self.what_it_measures}"),
+            snip(f"A low {self.test_name} can be associated with: {self.low_meaning}"),
+            snip(
+                f"A high {self.test_name} can be associated with: {self.high_meaning}"
+            ),
+        ]
+        if self.dietary_note:
+            snippets.append(
+                snip(f"Dietary note for {self.test_name}: {self.dietary_note}")
+            )
+        if self.specialist:
+            snippets.append(
+                snip(
+                    f"For an abnormal {self.test_name}, a relevant specialist "
+                    f"is a {self.specialist}."
+                )
+            )
+        return snippets

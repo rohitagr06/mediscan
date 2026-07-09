@@ -29,7 +29,11 @@ from mediscan.schemas.confidence import (
 )
 from mediscan.schemas.documents import DocumentType, ExtractedDocument, PageText
 from mediscan.schemas.extraction import ParseOutcome
-from mediscan.schemas.knowledge import ReferenceRangeEntry
+from mediscan.schemas.knowledge import (
+    KnowledgeSnippet,
+    ReferenceRangeEntry,
+    TestKnowledge,
+)
 from mediscan.schemas.labs import (
     AbnormalDirection,
     LabResult,
@@ -62,6 +66,7 @@ __all__ = [
     "ExplanationProvenance",
     "ExplanationSource",
     "ExtractedDocument",
+    "KnowledgeSnippet",
     "LabResult",
     "LLMRequest",
     "LLMResponse",
@@ -79,6 +84,7 @@ __all__ = [
     "Severity",
     "SeverityAssessment",
     "SpecialistSuggestion",
+    "TestKnowledge",
     "UrgencyAssessment",
     "UrgencyLevel",
 ]
