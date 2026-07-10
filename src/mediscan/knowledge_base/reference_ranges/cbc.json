@@ -2,11 +2,19 @@
   {
     "test_name": "Hemoglobin",
     "unit": "g/dL",
-    "low": 13.0,
-    "high": 17.0,
-    "critical_low": 7.0,
-    "critical_high": 20.0,
-    "source": "Example Clinical Laboratory, Adult Reference Intervals"
+    "source": "Tata 1mg Diagnostics adult sex-specific reference interval (male & female health-check reports)",
+    "male": {
+      "low": 13.0,
+      "high": 17.0,
+      "critical_low": 7.0,
+      "critical_high": 20.0
+    },
+    "female": {
+      "low": 12.0,
+      "high": 15.0,
+      "critical_low": 7.0,
+      "critical_high": 20.0
+    }
   },
   {
     "test_name": "Total Leukocyte Count",
@@ -29,9 +37,15 @@
   {
     "test_name": "Hematocrit",
     "unit": "%",
-    "low": 40.0,
-    "high": 50.0,
-    "source": "Example Clinical Laboratory, Adult Reference Intervals"
+    "source": "Tata 1mg Diagnostics adult sex-specific reference interval (male & female health-check reports)",
+    "male": {
+      "low": 40.0,
+      "high": 50.0
+    },
+    "female": {
+      "low": 36.0,
+      "high": 46.0
+    }
   },
   {
     "test_name": "MCV",
@@ -51,7 +65,7 @@
       "low": 3.8,
       "high": 4.8
     },
-    "source": "Common adult sex-specific reference interval (male values per Tata 1mg report)"
+    "source": "Tata 1mg Diagnostics adult sex-specific reference interval (male & female health-check reports)"
   },
   {
     "test_name": "MCH",

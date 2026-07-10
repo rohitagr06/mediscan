@@ -16,7 +16,10 @@ def test_loads_the_cbc_panel():
 def test_hemoglobin_range_is_present_and_correct():
     kb = load_reference_ranges()
     hb = kb["Hemoglobin"]
-    assert (hb.low, hb.high) == (13.0, 17.0)
+    # Hemoglobin is now sex-aware: male/female blocks, not flat bounds.
+    assert (hb.male.low, hb.male.high) == (13.0, 17.0)
+    assert (hb.female.low, hb.female.high) == (12.0, 15.0)
+    assert hb.male.critical_low == 7.0 and hb.male.critical_high == 20.0
 
 
 def test_kb_keys_match_normalization_output():

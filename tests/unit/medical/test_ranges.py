@@ -29,14 +29,25 @@ def test_report_reference_range_takes_precedence() -> None:
 def test_known_test_name_falls_back_to_knowledge_base() -> None:
     result = LabResult(test_name="Hb", value=9.8)
 
+    # No sex given -> the KB fallback unions both sexes (widest band, #029).
     resolution = resolve_reference_range(result)
 
     assert resolution.reference_range_source == RangeSource.KNOWLEDGE_BASE
     assert resolution.reference_range is not None
-    assert resolution.reference_range.low == 13.0
-    assert resolution.reference_range.high == 17.0
-    assert resolution.critical_thresholds.low == 7.0
+    assert resolution.reference_range.low == 12.0  # female low (widest)
+    assert resolution.reference_range.high == 17.0  # male high (widest)
+    assert resolution.critical_thresholds.low == 7.0  # criticals survive the union
     assert resolution.critical_thresholds.high == 20.0
+
+
+def test_sex_specific_kb_fallback_picks_the_right_block() -> None:
+    from mediscan.schemas import Sex
+
+    result = LabResult(test_name="Hb", value=9.8)
+    male = resolve_reference_range(result, Sex.MALE)
+    female = resolve_reference_range(result, Sex.FEMALE)
+    assert (male.reference_range.low, male.reference_range.high) == (13.0, 17.0)
+    assert (female.reference_range.low, female.reference_range.high) == (12.0, 15.0)
 
 
 def test_unknown_test_name_returns_unknown_resolution() -> None:
