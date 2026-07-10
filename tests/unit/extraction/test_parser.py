@@ -6,7 +6,7 @@ unparsed_lines, without ever crashing. These tests pin that contract,
 including the lowercase-flag regression that adversarial testing caught.
 """
 
-from mediscan.extraction.parser import parse_lab_text
+from mediscan.extraction.parser import parse_lab_text, parse_reference_range
 from mediscan.schemas import ParseOutcome
 
 # ---------- happy paths ----------
@@ -87,8 +87,8 @@ def test_empty_and_blank_input_is_empty_outcome():
 
 
 def test_line_without_reference_range_is_unparsed():
-    # documented RC1 limitation (decision #018): rows need a two-sided
-    # range to be recognized.
+    # a row still needs SOME printed range to be recognized (#018); one-sided
+    # ranges are now allowed too (#027), but "no range at all" stays unparsed.
     outcome = parse_lab_text("Hemoglobin 9.8 g/dL")
     assert outcome.results == []
     assert outcome.unparsed_lines == ["Hemoglobin 9.8 g/dL"]
@@ -107,3 +107,67 @@ def test_mixed_document_parses_only_the_lab_rows():
     assert len(outcome.unparsed_lines) == 3
     # parsing never judges: severities remain None
     assert all(r.severity is None for r in outcome.results)
+
+
+# ---------- one-sided ranges (Sprint 6.5) ----------
+
+
+def test_range_helper_reads_two_sided():
+    r = parse_reference_range("13.0 - 17.0")
+    assert (r.low, r.high) == (13.0, 17.0)
+
+
+def test_range_helper_upper_limit_only():
+    # "< N" means normal is BELOW N -> N is the upper limit (high), no low.
+    for token in ("< 100", "<100", "<= 100"):
+        r = parse_reference_range(token)
+        assert r.low is None and r.high == 100.0, token
+
+
+def test_range_helper_lower_limit_only():
+    # "> N" means normal is ABOVE N -> N is the lower limit (low), no high.
+    for token in ("> 40", ">= 40"):
+        r = parse_reference_range(token)
+        assert r.low == 40.0 and r.high is None, token
+
+
+def test_range_helper_tolerates_percent_unit():
+    r = parse_reference_range("< 5.7 %")
+    assert r.low is None and r.high == 5.7
+
+
+def test_range_helper_rejects_inverted_and_negative_and_garbage():
+    # inverted two-sided fails ReferenceRange validation -> None (not a crash);
+    # a negative or unrecognized token is simply not a range.
+    assert parse_reference_range("17 - 13") is None
+    assert parse_reference_range("< -3") is None
+    assert parse_reference_range("not a range") is None
+
+
+def test_one_sided_upper_line_parses():
+    r = parse_lab_text("LDL Cholesterol 82 mg/dL < 100").results[0]
+    assert r.test_name == "LDL Cholesterol"
+    assert r.value == 82.0
+    assert r.reference_range.low is None
+    assert r.reference_range.high == 100.0
+
+
+def test_one_sided_lower_line_parses_with_flag():
+    r = parse_lab_text("HDL Cholesterol 34 mg/dL > 40 L").results[0]
+    assert r.reference_range.low == 40.0
+    assert r.reference_range.high is None
+    assert r.flag_in_report == "L"
+
+
+def test_one_sided_range_does_not_swallow_a_trailing_flag():
+    # REGRESSION guard: the "%"/")" optional bits must not eat the space that
+    # separates a trailing flag, or a flagged one-sided row would vanish.
+    r = parse_lab_text("Triglycerides 210 mg/dL < 150 H").results[0]
+    assert r.reference_range.high == 150.0
+    assert r.flag_in_report == "H"
+
+
+def test_percent_unit_line_with_percent_in_range():
+    r = parse_lab_text("Glycohemoglobin 5.4 % < 5.7 %").results[0]
+    assert r.unit == "%"
+    assert r.reference_range.high == 5.7
