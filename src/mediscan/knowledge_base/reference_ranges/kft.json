@@ -1,0 +1,6 @@
+[
+  {"test_name": "Creatinine", "unit": "mg/dL", "low": 0.7, "high": 1.3, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "Urea", "unit": "mg/dL", "low": 19.26, "high": 49.22, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "Blood Urea Nitrogen", "unit": "mg/dL", "low": 9.0, "high": 23.0, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "Uric Acid", "unit": "mg/dL", "low": 3.5, "high": 7.2, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"}
+]

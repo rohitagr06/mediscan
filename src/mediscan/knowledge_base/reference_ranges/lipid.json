@@ -1,0 +1,8 @@
+[
+  {"test_name": "Total Cholesterol", "unit": "mg/dL", "high": 200, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "Triglycerides", "unit": "mg/dL", "high": 150, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "HDL Cholesterol", "unit": "mg/dL", "male": {"low": 40}, "female": {"low": 50}, "source": "NCEP ATP III — HDL cholesterol low thresholds (sex-specific)"},
+  {"test_name": "LDL Cholesterol", "unit": "mg/dL", "high": 100, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "Non-HDL Cholesterol", "unit": "mg/dL", "high": 130, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "VLDL Cholesterol", "unit": "mg/dL", "low": 10, "high": 30, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"}
+]

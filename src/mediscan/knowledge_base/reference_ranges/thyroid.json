@@ -1,0 +1,5 @@
+[
+  {"test_name": "TSH", "unit": "uIU/mL", "low": 0.55, "high": 4.78, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
+  {"test_name": "Free T3", "unit": "pg/mL", "low": 2.0, "high": 4.4, "source": "Common adult reference interval, assay-dependent — confirm against lab method"},
+  {"test_name": "Free T4", "unit": "ng/dL", "low": 0.8, "high": 1.8, "source": "Common adult reference interval, assay-dependent — confirm against lab method"}
+]
