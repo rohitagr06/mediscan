@@ -3,7 +3,26 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-10 (Sprint 6 COMPLETE — RAG & the knowledge base built, tested, grounding live)
+**Last updated:** 2026-07-10 (Sprint 6.5 COMPLETE — full-panel scope expansion: one-sided ranges, sex-aware resolution, the assessment-policy scope split, and the multi-panel KB)
+
+---
+
+## Session protocol (Cowork has no cross-chat memory — follow this every time)
+
+- **START of every session:** read THIS file (and any core docs the task needs)
+  BEFORE anything else, then confirm the current state back to Rohit in 2–3
+  sentences before starting new work.
+- **END / "wrap up" / "end session" / nearing usage limit:** immediately update
+  this file before stopping, covering: (a) what we accomplished, (b) key
+  decisions + why, (c) current state of files/code touched, (d) open issues /
+  blockers, (e) exact next steps to resume. Concise but complete enough for a
+  zero-memory session to pick up seamlessly. (Map: "accomplishments" = a,
+  "Key decisions" = b, "Current state of code" = c, "Open issues" = d,
+  "Exact next steps" = e.)
+- **Scope:** load only the folders/connectors the task needs — nothing extra.
+- **Brevity:** reference this file; don't re-explain context already written here.
+- **Model choice:** lightest capable model for routine/mechanical work; reserve
+  the strongest for genuinely complex reasoning or coding.
 
 ---
 
@@ -25,7 +44,7 @@ deterministic Python; AI only ever *explains* what the rules decided**
 - Full context lives in `docs/`: 00-product-brief, 01-architecture,
   02-repo-structure, 03-sprint-roadmap, 04-decision-log, 05-environment,
   06-reflections, 07-starter-playbook, 08/09/10/11 = sprint plans 2–5,
-  12-understanding-the-codebase, 13-sprint-6-plan.
+  12-understanding-the-codebase, 13-sprint-6-plan, 14-sprint-6.5-plan.
 
 ## How we work (standing agreements)
 
@@ -58,38 +77,53 @@ deterministic Python; AI only ever *explains* what the rules decided**
 
 ## Current position
 
-**Sprints 0–6 are COMPLETE.** Deterministic pipeline: document → parse →
-normalize → resolve ranges (KB criticals merged, #023) → severity →
-urgency, zero AI. AI explanation layer (Sprint 5): one medicine-blind
-`LLMClient` contract; ONE `OpenAICompatibleProvider` driving Gemini +
-GitHub Models via the openai SDK (#024); versioned PromptTemplates with
-injection fencing (#025); structured output + one repair-retry; resilient
-chain with backoff; deterministic template floor; regex guardrail (#026);
-ExplanationProvenance on every output. **RAG layer (Sprint 6, #028): a
-curated sourced KB → chunked snippets → local BGE-small embeddings (real in
-prod, injectable fake in tests) → in-memory ChromaDB rebuilt from files →
-bounded retriever → grounding wired into the Sprint-5 FACTS seam →
-`grounding_sources` on every AI explanation.** The `medical/` engine is
-forbidden from importing `rag/`, proven by an AST boundary test. **259 fast
-tests + 3 slow (real BGE + PaddleOCR) passing on Rohit's Mac.**
+**Sprints 0–6.5 are COMPLETE.** Deterministic pipeline: document → read
+patient sex → parse (two-sided AND one-sided ranges) → normalize → resolve
+ranges (sex-aware KB fallback, KB criticals merged, #023/#029) → **classify
+coverage (assessed vs acknowledged, #030)** → severity → urgency, zero AI.
+AI explanation layer (Sprint 5): one medicine-blind `LLMClient` contract; ONE
+`OpenAICompatibleProvider` driving Gemini + GitHub Models via the openai SDK
+(#024); versioned PromptTemplates with injection fencing (#025); structured
+output + one repair-retry; resilient chain with backoff; deterministic template
+floor; regex guardrail (#026); ExplanationProvenance on every output. RAG layer
+(Sprint 6, #028): a curated sourced KB → chunked snippets → local BGE-small
+embeddings (real in prod, injectable fake in tests) → in-memory ChromaDB
+rebuilt from files → bounded retriever → grounding wired into the Sprint-5
+FACTS seam → `grounding_sources` on every AI explanation. The `medical/` engine
+is forbidden from importing `rag/`, proven by an AST boundary test. **Sprint
+6.5 widened the engine from CBC to a full-body checkup (CBC, KFT, lipids,
+glucose/HbA1c, thyroid) for both sexes; out-of-scope and sensitive tests are
+acknowledged but never graded.** Fast suite green (304 in the cloud subset;
+Rohit's Mac also runs the OCR + real-BGE tests).
 
-## This session's accomplishments (Sprint 6)
+## This session's accomplishments (Sprint 6.5)
 
-- 6.7 — wired retrieved KB snippets into the FACTS block (`_grounding_snippets`,
-  `_augment_facts`); normal findings skipped, snippets deduped, retrieval
-  failure swallowed (never a single point of failure).
-- 6.8 — added `grounding_sources: list[str]` to `ExplanationProvenance` and
-  threaded the unique sources onto every AI-path output (empty on the
-  deterministic path).
-- 6.9 — RAG test suite: happy-path half (schema/source/chunking/index/retrieval)
-  + adversarial half (K-bounds, odd queries, grounding wiring, provenance,
-  the `medical/`⊬`rag/` AST boundary, a slow real-BGE meaning test).
-- Two library-behaviour bugs fixed: unique per-build collection name
-  (`EphemeralClient` shares one backend → "already exists"); fake embedder
-  overrides `__init__` WITHOUT calling super (base stub only warns).
-- 6.10 — sprint close: decision #028, roadmap Sprint 6 ✅, architecture
-  banner → end of Sprint 6, README status/table, Sprint 6 reflection,
-  this file.
+- 6.5.2–6.5.4 — parser learns ONE-SIDED ranges (`< 100`, `> 40`, `< 5.7 %`)
+  and survives real Tata/Lal/Labsmart report formats (thousands-commas,
+  trailing method column, pre-flags); `extraction/metadata.py` reads the
+  patient's SEX + age from the header; sex-aware + one-sided range resolution
+  (`resolve_reference_range(result, sex)`), union fallback for unknown sex.
+- 6.5.5–6.5.7 — `RangeBounds` value object + sex-aware `ReferenceRangeEntry`
+  (`male`/`female` blocks); one-sided severity banding via `None` guards; the
+  coverage split — `AssessmentPolicy` (Tiers A/B/C) kept SEPARATE from the KB,
+  `classify_coverage` → `CoverageResult` (assessed/acknowledged/unparsed),
+  only assessed feed urgency (#030).
+- 6.5.8–6.5.9 — the multi-panel sourced KB grew to **38 tests** across
+  reference_ranges + test_knowledge (CBC-22, lipids, glucose, thyroid, KFT),
+  MedlinePlus/standards-cited, sex-aware where real reports gave the numbers.
+- 6.5.10 — **KB integrity checks:** `load_test_knowledge()`, policy-name
+  helpers, and `test_kb_integrity.py` catch cross-layer drift (a Tier-A test
+  missing a range/knowledge entry, an orphan KB entry, a non-canonical name/
+  unit, a duplicate) with a clear message.
+- 6.5.11 — synthetic full-panel fixture (male + female) + an end-to-end
+  coverage integration test: the same 12.5 Hb bands LOW for male / NORMAL for
+  female, one-sided lipids band correctly, out-of-scope tests acknowledged.
+- 6.5.12 — adversarial coverage tests: a scary ACKNOWLEDGED value (PSA at 50×)
+  cannot move urgency (#006 boundary); sex threads through `classify_coverage`
+  into the KB fallback (male→low, female→normal, unknown→union).
+- 6.5.13 — sprint close: decisions #029 + #030, roadmap Sprint 6.5 ✅,
+  architecture banner → end of Sprint 6.5, README status, Sprint 6.5
+  reflection, this file.
 
 ## Key decisions (full log in docs/04; most relevant recent ones)
 
@@ -100,53 +134,78 @@ tests + 3 slow (real BGE + PaddleOCR) passing on Rohit's Mac.**
 - **#025** Versioned PromptTemplates + provenance on every output.
 - **#026** Deterministic block-and-fall-back guardrail.
 - **#027** RC1 scope = full-body checkup, both sexes (engine expansion = 6.5).
-- **#028 (this session)** RAG built now on the CBC KB, feeding AI only:
-  ChromaDB + local BGE-small, in-memory index rebuilt from files, injectable
-  embedder (+ fake for offline tests), grounding into the FACTS seam,
-  `grounding_sources` traceability, `medical/`⊬`rag/` enforced by a test.
+- **#028** RAG built now on the CBC KB, feeding AI only: ChromaDB + local
+  BGE-small, in-memory index rebuilt from files, injectable embedder (+ fake
+  for offline tests), grounding into the FACTS seam, `grounding_sources`
+  traceability, `medical/`⊬`rag/` enforced by a test.
+- **#029 (this session)** Sex-aware + one-sided range resolution: parser reads
+  one-sided ranges; patient sex read from the report; report-first still wins
+  (#023), sex only steers the KB fallback; UNKNOWN sex → union of both sexes
+  (widest band); one-sided banding never invents a direction.
+- **#030 (this session)** Scope tiers + acknowledge-don't-skip: an explicit
+  `AssessmentPolicy` (Tiers A/B/C) kept SEPARATE from the medical KB decides
+  what gets graded; `classify_coverage` splits every test into assessed /
+  acknowledged / unparsed; only assessed feed urgency, so a sensitive or
+  out-of-scope value can never move the verdict; KB integrity checks guard the
+  policy↔KB coupling.
 
 ## Current state of code
 
 - All source under `src/mediscan/`. Built & tested: config, full schema
   family, ingestion, OCR, extraction, deterministic medical engine, AI
-  explanation layer, **and now `rag/`**.
-- `rag/` BUILT: `embedding.py` (`bge_embedding_function` + `FakeEmbeddingFunction`
-  subclassing ChromaDB's `EmbeddingFunction`), `index.py` (`load_snippets`,
-  `build_index` with unique collection name, `@cache get_index`),
-  `retriever.py` (`retrieve`, `RetrievedSnippet`, BGE query prefix,
-  `settings.rag_top_k`). `ai/explain.py` now grounds via the retriever;
-  `schemas/ai.py` `ExplanationProvenance` carries `grounding_sources`.
-- Tests: 259 fast passing (incl. `tests/unit/rag/test_rag_layer.py` +
-  `test_rag_adversarial.py`); 3 slow (real BGE + Paddle) pass with `-m slow`.
-- Knowledge base: `src/mediscan/knowledge_base/test_knowledge/cbc.json`
-  (5 CBC tests → 25 snippets, MedlinePlus-sourced) drives RAG.
-  `reference_ranges/cbc.json` still has `"STARTER VALUE"` sources (#019).
+  explanation layer, and `rag/`.
+- Sprint 6.5 additions: `extraction/metadata.py` (`extract_patient_context` →
+  `PatientContext`), `schemas/patient.py` (`Sex`, `PatientContext`),
+  `schemas/coverage.py` (`AssessmentTier`, `AcknowledgeClass`,
+  `AssessmentPolicy`, `AcknowledgedTest`, `CoverageResult`),
+  `medical/coverage.py` (`_POLICY_DATA`, `classify_coverage`, `policy_for`,
+  `assessable_test_names`/`policy_test_names`). `extraction/parser.py` reads
+  one-sided ranges; `schemas/knowledge.py` gained `RangeBounds` + sex blocks;
+  `medical/ranges.py` resolves sex-aware (`_union`, `_bounds_for_sex`);
+  `medical/severity.py` + `rag/index.py` (`load_test_knowledge`) extended.
+- Tests: fast suite green — 304 in the cloud subset (OCR + RAG excluded, not
+  installable there); Rohit's Mac runs the full suite incl. OCR + slow real-BGE.
+  New this sprint: `test_metadata.py`, `test_patient.py`, `test_coverage.py`,
+  `test_coverage_schema.py`, `test_kb_integrity.py`, `test_coverage_adversarial.py`,
+  `tests/integration/test_full_panel_coverage.py`, `tests/fixtures/full_panel.py`.
+- Knowledge base: grew to **38 tests** across `test_knowledge/` (177 snippets)
+  and `reference_ranges/` (cbc/lipid/glucose/thyroid/kft), MedlinePlus/
+  standards-cited; Hemoglobin/Hematocrit/RBC/HDL/Creatinine/Uric-Acid sex-aware
+  from real report intervals. NOTE: Hemoglobin's CRITICAL thresholds are still
+  example-sourced; some later-wave values lean on standards, not a printed
+  range (#019 sourcing review still pending before clinical use).
 
 ## Open issues / blockers / homework (Rohit's to do)
 
-1. **KB reference-range sourcing (#019):** replace every `"STARTER VALUE"`
-   in `reference_ranges/cbc.json` with a real cited source BEFORE clinical use.
+1. **KB reference-range sourcing (#019):** replace remaining example/STARTER
+   sources with real cited ones BEFORE clinical use — priority: Hemoglobin's
+   critical thresholds (still example-sourced) and the later-wave values not
+   backed by a printed range (HDL/glucose/thyroid; Free T3/T4 is the softest,
+   assay-dependent).
 2. **Architecture reflection exercises:** Sprint-4 (why deterministic
    severity) and Sprint-5 (why validate+guardrail despite a careful prompt)
-   — 5 sentences each in docs/06. (Sprint-6 retro is written by the pair;
+   — 5 sentences each in docs/06. (Later retros are written by the pair;
    Rohit can add a personal note.)
 3. Minor/nominal: Sprint-0 "break the CI" exercise still open.
 
-No hard blockers for starting Sprint 6.5.
+No hard blockers for starting Sprint 7.
 
 ## Exact next steps (to resume)
 
-1. Confirm CI is green on GitHub after the Sprint-6 commits land.
-2. **Sprint 6.5 — Full-Panel Scope Expansion (#027)** is the next sprint:
-   extend the parser to one-sided ranges (`< 200`, `> 40`, `< 5.7 %`); make
-   reference ranges SEX-AWARE with the patient's sex read from the report;
-   author the multi-panel sourced reference-range + explanation KB (KFT,
-   lipids, electrolytes, vitamins, diabetes/HbA1c, thyroid, numeric urine).
-   The RAG layer absorbs the bigger KB with NO code change. Needs a detailed
-   plan doc (docs/14) before starting, like docs/13 for Sprint 6.
-3. RC2/parked: honor 429 `retryDelay` in the chain; wire `ReportExplanations`
-   into `AnalysisReport` (Sprint 7 orchestration); confidence scoring;
-   observability; persisted RAG index if rebuild-per-process gets slow (#028).
+1. Confirm CI is green on GitHub after the Sprint-6.5 commits land.
+2. **Sprint 7 — Confidence, Orchestration & Explainability** is the next
+   sprint: hybrid confidence scoring; async pipeline wiring (concurrency,
+   timeouts, cancellation); the full explanation chain assembled per abnormal
+   finding; wire `CoverageResult` + `ReportExplanations` into `AnalysisReport`
+   (the master object) so one function call produces the whole report. Needs a
+   detailed plan doc (docs/15) before starting, like docs/14 for Sprint 6.5.
+   Also parked FROM this sprint: the composable-recognizer PARSER REFACTOR —
+   the regex grammar accumulated real-report special cases (thousands-commas,
+   method columns, pre-flags) and is near the edge of what one regex should
+   carry.
+3. RC2/parked: honor 429 `retryDelay` in the chain; observability; persisted
+   RAG index if rebuild-per-process gets slow (#028); age-specific ranges
+   (the sex block generalizes to a demographic key, #029).
 
 **Gemini note:** free tier worked with model `gemini-2.5-flash`
 (gemini-2.0-flash had limit 0). Both keys live in Rohit's .env.

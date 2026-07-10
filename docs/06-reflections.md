@@ -237,3 +237,55 @@ values pending sourced review (#019); Sprint 6.5 expands the deterministic
 engine to the full-body panels and grows the KB — the RAG layer absorbs it
 with no code change, which was the whole point. Retrieval is top-K with no
 re-ranking or score threshold yet; revisit if quality needs it.
+
+## Sprint 6.5 — Full-Panel Scope Expansion (retro)
+
+**The sprint's real product was a boundary, not a feature.** Widening from
+CBC to a full-body checkup sounded like "add more tests", but the hard part
+was deciding what happens to a test we HAVEN'T vetted. The answer —
+acknowledge-don't-skip (#030) — came from Rohit: a user's out-of-scope result
+must be shown, never silently dropped and never graded as if we understood it.
+That reframed the whole sprint around a `CoverageResult` (assessed /
+acknowledged / unparsed) and an assessment POLICY kept deliberately SEPARATE
+from the medical KB. Keeping "what we grade" (product policy) apart from "what
+a value means" (medical fact) is the decision I expect to age best: scope now
+grows by adding a policy row, not by editing medicine.
+
+**The safety win is a test that asserts nothing happens.** The sharpest test
+of the sprint puts a PSA at 50× its limit next to a normal haemoglobin and
+demands the verdict stay ROUTINE. It's the #006 boundary stated as an
+adversary: an alarming ACKNOWLEDGED value cannot move urgency, because grading
+is gated by an allowlist, not by whether a number looks scary. Writing the
+test that proves a scary input is *inert* felt more valuable than any of the
+tests that prove abnormal inputs escalate.
+
+**Sex-awareness matters less than it looks — and that's the point (#029).**
+Because resolution is report-first (#023) and real reports print sex-correct
+ranges, the patient's sex almost never changes a graded verdict; it only
+steers the KB FALLBACK. The end-to-end fixture makes this concrete and honest:
+the same 12.5 haemoglobin bands LOW for the male variant and NORMAL for the
+female one *because the printed ranges differ*, while the unit tests prove the
+fallback picks the right block (and unions both for unknown sex). Building the
+union-for-unknown as the conservative default means an absent range can never
+manufacture a false abnormal.
+
+**The parser's growing pains confirmed a deferred decision.** Getting one
+real Tata/Lal/Labsmart report after another to parse cleanly meant piling
+special cases onto the regex grammar (thousands-commas, trailing method
+columns, pre-flags, wrap artifacts). Each fix was justified, but the
+accumulation is exactly the signal that the composable-recognizer refactor
+parked for Sprint 7 is the right call — the grammar is near the edge of what
+one regex should carry.
+
+**A process bug worth remembering:** I reasoned about task numbering and the
+plan from a STALE sandbox copy of docs/14 and told Rohit the numbering had
+drifted when it hadn't — he corrected me. The fix (and the standing rule from
+Sprint 6) is the same: read the LIVE file on the Mac before reasoning about
+its contents, never a cached stage. Cheap to avoid, embarrassing to hit twice.
+
+**Carried forward:** several later-wave tests (HDL/glucose/thyroid values not
+in the sample reports) still lean on standards rather than a real printed
+range; Free T3/T4 sourcing is the softest (assay-dependent); Hemoglobin's
+critical thresholds are still example-sourced. The KB integrity checks now
+make any policy↔KB drift a loud failure, which is the safety net that lets the
+KB keep growing without silent holes.

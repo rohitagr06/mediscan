@@ -12,9 +12,8 @@ which are abnormal and how severe, how urgently a doctor should be consulted —
 with every claim traced to a verified reference range or curated knowledge source.
 
 Severity and urgency are computed by **deterministic, auditable rules** — never by AI
-guesswork. AI is used only to *explain* findings in friendly language, and if every AI
-model is unavailable the product still produces a full analysis from deterministic
-templates.
+guesswork. AI is used only to *explain* findings in friendly language, grounded via RAG
+on a curated medical knowledge base.
 
 > ## ⚠️ Medical Disclaimer
 >
@@ -24,18 +23,17 @@ templates.
 
 ## Status
 
-🚧 **RC1 in development** — Sprint 6 complete (259 tests passing, +1 slow).
-
-| Sprint | Delivered |
-|---|---|
-| 0 ✅ | Tooling: uv, Ruff+Black, pytest, pre-commit, CI |
-| 1 ✅ | Security-hardened master schema (Pydantic v2), full test suite |
-| 2 ✅ | Secure upload validation (magic bytes, spoof detection), self-destructing storage, PyMuPDF text extraction, text-vs-scan router, synthetic fixtures |
-| 3 ✅ | OCR: PaddleOCR engine (images + scanned PDFs), image preprocessing, OcrEngine contract, DocumentType→engine factory; security-hardened (image-bomb guard, config bounds, page cap) |
-| 4 ✅ | Deterministic medical engine: tolerant line parser, name/unit normalization, report-first/KB-fallback range resolution (with merged KB critical thresholds), hybrid severity banding, conservative urgency roll-up; end-to-end integration test — zero AI |
-| 5 ✅ | AI explanation layer: one medicine-blind `LLMClient` contract; one OpenAI-compatible provider driving Gemini + GitHub Models; versioned prompt templates with injection fencing; structured output with repair-retry; resilient fallback chain; deterministic template floor; output guardrail; provenance on every output |
-| 6 ✅ | RAG & the knowledge base: curated *sourced* KB, ChromaDB + local BGE-small embeddings (in-memory index rebuilt from files), retrieval grounded into the FACTS seam, `grounding_sources` on every explanation; injectable fake embedder keeps CI offline; `medical/`-never-imports-`rag/` boundary test |
-| 6.5 🔜 | Full-panel scope: parser one-sided ranges, sex-aware reference ranges, multi-panel sourced KB (KFT, lipids, electrolytes, vitamins, diabetes/HbA1c, thyroid, numeric urine) |
+🚧 **RC1 in development** — Sprints 0–6.5 complete. The full deterministic
+pipeline is built and tested: secure ingestion → PyMuPDF/PaddleOCR extraction →
+parsing (two-sided *and* one-sided ranges) → normalization → sex-aware range
+resolution → severity → conservative urgency roll-up, with **zero AI** in any
+safety decision. On top sit the AI explanation layer (Gemini → GitHub Models →
+deterministic templates, with a guardrail) and RAG grounding (ChromaDB +
+BGE-small over a curated, sourced knowledge base). As of Sprint 6.5 MediScan
+reads a full-body checkup (CBC, KFT, lipids, glucose/HbA1c, thyroid) for both
+sexes; out-of-scope and sensitive tests are acknowledged but never graded.
+Remaining before RC1: confidence scoring & async orchestration (Sprint 7) and
+the Gradio UI + PDF report (Sprint 8).
 
 ## Quick start
 
@@ -53,14 +51,6 @@ uv run pre-commit install
 uv run pytest
 ```
 
-The AI explanation layer reads free-tier API keys from `.env`
-(`MEDISCAN_GEMINI_API_KEY`, `MEDISCAN_GITHUB_MODELS_TOKEN`). They are **optional**:
-without them, the deterministic pipeline and template-based explanations run unchanged —
-the test suite is fully mock-first and needs no keys or network.
-
-Note: the OCR tests are marked `slow` and excluded from the default run. Run them with
-`uv run pytest -m slow` (downloads ~200 MB of PaddleOCR models on first use).
-
 ## Documentation
 
 | Document | What it covers |
@@ -71,18 +61,12 @@ Note: the OCR tests are marked `slow` and excluded from the default run. Run the
 | [Sprint roadmap](docs/03-sprint-roadmap.md) | The build plan, sprint by sprint |
 | [Decision log](docs/04-decision-log.md) | Every significant choice and its reasoning |
 | [Environment setup](docs/05-environment-setup.md) | Blank machine → running tests |
-| [Reflections & retros](docs/06-reflections.md) | Per-sprint lessons learned |
-| [Project starter playbook](docs/07-python-project-starter-playbook.md) | Reusable setup pipeline for any Python project |
-| [Sprint plans](docs/) | Detailed just-in-time plans: docs/08 (S2), 09 (S3), 10 (S4), 11 (S5) |
-| [**Understanding this codebase**](docs/12-understanding-the-codebase.md) | **New-contributor onboarding guide — start here if you're new** |
-| [Project status](project-status.md) | Live single-source-of-truth for resuming work |
 
 ## Tech stack (RC1)
 
-Python 3.12+ · uv · Pydantic v2 · PyMuPDF + PaddleOCR (hybrid OCR) · Pillow (preprocessing) ·
-`openai` SDK driving Gemini + GitHub Models (OpenAI-compatible endpoints) with deterministic
-fallback · ChromaDB + BGE-small embeddings (RAG, Sprint 6) · WeasyPrint (PDF reports, Sprint 8) ·
-Gradio (UI, Sprint 8) · pytest · Ruff + Black · GitHub Actions
+Python 3.12+ · uv · Pydantic v2 · PyMuPDF + PaddleOCR (hybrid OCR) · ChromaDB +
+BGE-small embeddings (RAG) · Gemini / GitHub Models with deterministic fallback ·
+WeasyPrint (PDF reports) · Gradio (UI) · pytest · Ruff + Black · GitHub Actions
 
 ## License
 

@@ -2,11 +2,19 @@
 
 *Written for a beginner. Every stage explains **what** it does, **why** it exists, and the key tradeoff behind it.*
 
-> **Implementation status (end of Sprint 6):** ingestion & validation,
+> **Implementation status (end of Sprint 6.5):** ingestion & validation,
 > the router, PyMuPDF + PaddleOCR extraction, the full deterministic
 > medical core (parser, normalization, range resolution with merged KB
 > criticals, severity, urgency), AND the AI explanation layer are BUILT
-> and tested. The AI platform: one medicine-blind `LLMClient` contract,
+> and tested. **Sprint 6.5 widened the engine from CBC to a full-body
+> checkup (CBC, KFT, lipids, glucose/HbA1c, thyroid) for BOTH sexes:**
+> the parser reads one-sided ranges (`< 100`, `> 40`) alongside two-sided;
+> the patient's sex is read from the report and steers a sex-aware KB
+> fallback (union band when sex is unknown, #029); an explicit assessment
+> POLICY — kept separate from the medical KB — splits every test into
+> ASSESSED vs ACKNOWLEDGED, so out-of-scope and sensitive tests are shown
+> but never graded and can never move the verdict (#030); load-time KB
+> integrity checks guard the policy↔KB coupling. The AI platform: one medicine-blind `LLMClient` contract,
 > one OpenAI-compatible provider class driving Gemini + GitHub Models
 > (#024), versioned PromptTemplates with injection fencing (#025),
 > structured output with one repair-retry, a resilient fallback chain
@@ -21,7 +29,7 @@
 > importing `rag/`, proven by a boundary test (#028).
 > Still design-only: confidence scoring & async
 > orchestration (Sprint 7), observability (Sprint 7), presentation
-> (Sprint 8). Decisions #011-#028 refined this design.
+> (Sprint 8). Decisions #011-#030 refined this design.
 > NOTE: no logging/observability exists yet (scheduled for Sprint 7).
 
 ---
@@ -103,11 +111,21 @@ canonicalizes names and units so the medical engine compares apples to apples.
 
 **Reference-range rule:** if the report includes its own range, use it (labs calibrate
 ranges to their equipment and population). Only if missing, fall back to generalized adult
-ranges from our KB. Architecture keeps ranges configurable so age/gender-specific ranges
-can arrive later without rewrites.
+ranges from our KB. As of Sprint 6.5 the KB fallback is **sex-aware** — the patient's sex
+is read from the report and selects the right male/female band, unioning both when sex is
+unknown (#029); report-printed ranges still win, so sex only steers the fallback. Ranges
+also support **one-sided** limits (`< 100`, `> 40`) for lipids/HbA1c/thyroid.
+
+**What we grade vs what we only acknowledge (#030):** an explicit assessment POLICY —
+deliberately kept SEPARATE from the medical KB — decides which tests the engine grades.
+Everything parsed is split into *assessed* (graded), *acknowledged* (shown but not graded:
+out-of-scope, deferred, or sensitive tests like tumour markers), and *unparsed* (recorded,
+never dropped). Only the assessed bucket feeds urgency, so a sensitive or unvetted value
+can never move the verdict — a hard expression of #006.
 
 Severity bands (Normal → Critical) come from *how far outside* the range a value sits,
-per-test, defined in reviewable KB data files — not hardcoded, not AI-decided. Urgency is
+per-test, defined in reviewable KB data files — not hardcoded, not AI-decided. One-sided
+ranges band without inventing a direction (a `< 100` value can only read HIGH). Urgency is
 the conservative roll-up of all severities (one Critical flag ⇒ at least Urgent).
 Every decision records its inputs, so it is fully **auditable and explainable**.
 
