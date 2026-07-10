@@ -41,9 +41,11 @@ from mediscan.schemas import LabResult, ParseOutcome, ReferenceRange
 # grammar only ever has to reason about one "-" character.
 _DASH_NORMALIZE = str.maketrans({"–": "-", "—": "-", "−": "-"})
 
-# A number is an unsigned integer or decimal (17 or 13.0). No leading sign:
-# negative reference values are out of scope (#018) and stay unparsed.
-_NUMBER = r"\d+(?:\.\d+)?"
+# A number is an unsigned integer or decimal (17 or 13.0), optionally with
+# thousands separators ("5,100", "10,800"). No leading sign: negative
+# reference values are out of scope (#018) and stay unparsed. The commas are
+# stripped before the number is turned into a float.
+_NUMBER = r"\d+(?:,\d{3})*(?:\.\d+)?"
 
 # One-sided: an operator then a number, with an OPTIONAL trailing "%".
 # "(?:\s*%)?" only consumes a space when a "%" actually follows it, so it can
@@ -79,11 +81,15 @@ _LAB_LINE = re.compile(
     # This stays unambiguous because VALUE must be preceded by whitespace: a
     # name has no internal spaces before its number, so "HbA1c 5.4" splits at
     # the space, never inside "HbA1c". Lazy (+?) stops at the first split where
-    # a full "value unit range" follows. Parentheses let real names through
-    # ("Glycosylated Hemoglobin (HbA1c)", "Aspartate Transaminase (SGOT)").
-    r"(?P<name>[A-Za-z][A-Za-z0-9 ()-]+?)"
+    # a full "value unit range" follows. Parentheses and commas let real names
+    # through ("Glycosylated Hemoglobin (HbA1c)", "HEMATOCRIT VALUE, HCT").
+    r"(?P<name>[A-Za-z][A-Za-z0-9 (),-]+?)"
     r"\s+"  # gap
-    rf"(?P<value>{_NUMBER})"  # VALUE: integer or decimal
+    # Some labs print the H/L flag BEFORE the value ("LYMPHOCYTE  L  18"),
+    # not after the range. Capture it optionally here so it is not absorbed
+    # into the name; a normal row (value follows immediately) just skips it.
+    r"(?:(?P<preflag>[HL]{1,2}|\*)\s+)?"
+    rf"(?P<value>{_NUMBER})"  # VALUE: integer/decimal, thousands commas allowed
     r"\s+"
     r"(?P<unit>\S+)"  # UNIT: one non-space token
     r"\s+"
@@ -129,14 +135,18 @@ def parse_reference_range(token: str) -> ReferenceRange | None:
 
     one = _ONE_SIDED_RE.match(text)
     if one is not None:
-        number = one.group("num")
+        # strip thousands commas ("10,800" -> "10800") before float coercion
+        number = one.group("num").replace(",", "")
         if one.group("op") in ("<", "<="):
             return _safe_reference_range(low=None, high=number)
         return _safe_reference_range(low=number, high=None)
 
     two = _TWO_SIDED_RE.match(text)
     if two is not None:
-        return _safe_reference_range(low=two.group("low"), high=two.group("high"))
+        return _safe_reference_range(
+            low=two.group("low").replace(",", ""),
+            high=two.group("high").replace(",", ""),
+        )
 
     return None
 
@@ -172,6 +182,18 @@ def parse_lab_text(text: str) -> ParseOutcome:
             unparsed_lines.append(line)
             continue
 
+        # Column-alignment padding in the source PDF can glue a stray token to
+        # the name across a big whitespace gap ("T3, Total          R"). A real
+        # name uses single spaces between words, so keep only the part before
+        # the first multi-space gap.
+        name = re.split(r"\s{2,}", match.group("name"))[0].strip()
+        if len(name) < 2:
+            # A lone character (e.g. a stray "R" left on a value line when a
+            # long header wrapped in the source PDF) is never a real test
+            # name. Reject it rather than emit a bogus one-letter result.
+            unparsed_lines.append(line)
+            continue
+
         reference_range = parse_reference_range(match.group("range"))
         if reference_range is None:
             # The row matched the row SHAPE but the range token didn't resolve
@@ -180,17 +202,18 @@ def parse_lab_text(text: str) -> ParseOutcome:
             unparsed_lines.append(line)
             continue
 
-        # Classify the trailing text: a short token (L / H / HH / *) is a flag
-        # we keep; anything longer — a Method column like "Cyanide Free SLS" —
-        # is ignored. This is what lets real reports (name value unit range
-        # METHOD) parse without inventing a flag from the method name.
+        # The flag may sit BEFORE the value (preflag) or AFTER the range
+        # (tail). A trailing token is a flag only when it is exactly H/L/HH/
+        # LL/*; anything longer is a Method column like "Cyanide Free SLS" and
+        # is ignored, so we never invent a flag from a method name.
         tail = match.group("tail")
-        flag = tail.strip() if tail and _FLAG_RE.match(tail.strip()) else None
+        tail_flag = tail.strip() if tail and _FLAG_RE.match(tail.strip()) else None
+        flag = match.group("preflag") or tail_flag
 
         try:
             result = LabResult(
-                test_name=match.group("name").strip(),
-                value=match.group("value"),
+                test_name=name,
+                value=match.group("value").replace(",", ""),  # strip thousands commas
                 unit=match.group("unit"),
                 reference_range=reference_range,
                 flag_in_report=flag,

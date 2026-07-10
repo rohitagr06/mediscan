@@ -273,3 +273,45 @@ def test_qualitative_and_prose_stay_unparsed():
         outcome = parse_lab_text(line)
         assert outcome.results == [], line
         assert outcome.unparsed_lines == [line], line
+
+
+# ---------- multi-vendor formats (Sprint 6.5.2d) ----------
+# Pins formats from other real labs: comma thousands-separators, an H/L flag
+# BEFORE the value, commas inside names, and PDF column-wrap artifacts.
+
+
+def test_thousands_separators_in_value_and_range():
+    r = parse_lab_text("Total Leukocyte Count 5,100 cumm 4,800 - 10,800").results[0]
+    assert r.value == 5100.0
+    assert (r.reference_range.low, r.reference_range.high) == (4800.0, 10800.0)
+
+
+def test_flag_before_value_is_not_absorbed_into_name():
+    r = parse_lab_text("Lymphocyte L 18 % 20 - 40").results[0]
+    assert r.test_name == "Lymphocyte"  # NOT "Lymphocyte L"
+    assert r.value == 18.0
+    assert r.flag_in_report == "L"
+
+    r2 = parse_lab_text("MCHC H 35.7 % 31.5 - 34.5").results[0]
+    assert r2.test_name == "MCHC"
+    assert r2.flag_in_report == "H"
+
+
+def test_comma_inside_name_parses():
+    r = parse_lab_text("Hematocrit Value, HCT 42 % 40 - 50").results[0]
+    assert r.test_name == "Hematocrit Value, HCT"
+    assert r.value == 42.0
+
+
+def test_single_character_name_artifact_rejected():
+    # a lone "R" (a wrapped-header fragment from PDF extraction) is not a test.
+    outcome = parse_lab_text("R 40.00 mg/dL 13.00 - 43.00")
+    assert outcome.results == []
+    assert outcome.unparsed_lines == ["R 40.00 mg/dL 13.00 - 43.00"]
+
+
+def test_stray_token_across_wide_gap_is_trimmed_from_name():
+    # column padding can glue a stray "R" to a real name across a big gap.
+    r = parse_lab_text("T3, Total          R 1.2 ng/mL 0.6 - 1.8").results[0]
+    assert r.test_name == "T3, Total"
+    assert r.value == 1.2
