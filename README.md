@@ -24,7 +24,7 @@ templates.
 
 ## Status
 
-🚧 **RC1 in development** — Sprint 5 complete (240 tests passing).
+🚧 **RC1 in development** — Sprint 6 complete (259 tests passing, +1 slow).
 
 | Sprint | Delivered |
 |---|---|
@@ -34,7 +34,8 @@ templates.
 | 3 ✅ | OCR: PaddleOCR engine (images + scanned PDFs), image preprocessing, OcrEngine contract, DocumentType→engine factory; security-hardened (image-bomb guard, config bounds, page cap) |
 | 4 ✅ | Deterministic medical engine: tolerant line parser, name/unit normalization, report-first/KB-fallback range resolution (with merged KB critical thresholds), hybrid severity banding, conservative urgency roll-up; end-to-end integration test — zero AI |
 | 5 ✅ | AI explanation layer: one medicine-blind `LLMClient` contract; one OpenAI-compatible provider driving Gemini + GitHub Models; versioned prompt templates with injection fencing; structured output with repair-retry; resilient fallback chain; deterministic template floor; output guardrail; provenance on every output |
-| 6 🔜 | RAG & the knowledge base: curated KB content, ChromaDB + embeddings, retrieval grounding |
+| 6 ✅ | RAG & the knowledge base: curated *sourced* KB, ChromaDB + local BGE-small embeddings (in-memory index rebuilt from files), retrieval grounded into the FACTS seam, `grounding_sources` on every explanation; injectable fake embedder keeps CI offline; `medical/`-never-imports-`rag/` boundary test |
+| 6.5 🔜 | Full-panel scope: parser one-sided ranges, sex-aware reference ranges, multi-panel sourced KB (KFT, lipids, electrolytes, vitamins, diabetes/HbA1c, thyroid, numeric urine) |
 
 ## Quick start
 

@@ -198,3 +198,42 @@ Mock-first now runs in 0.08s with no keys and no network.
 (RAG) changes only where they come from. Honor a 429's `retryDelay` in
 the chain (RC2). Wire `ReportExplanations` into `AnalysisReport` during
 Sprint 7 orchestration. KB sourcing homework (#019) still open.
+## Sprint 6 — RAG & the Knowledge Base (retro)
+
+**What we built:** the open-book. A curated, *sourced* knowledge base (the
+5 CBC tests, every statement cited) validated at load; a chunker that splits
+each entry into individually-retrievable snippets; local BGE-small embeddings
+behind an INJECTABLE seam (real model in production, a deterministic
+word-overlap fake in tests — zero download, zero network); an in-memory
+ChromaDB index rebuilt from the JSON each run; a bounded retriever; grounding
+wired into the existing Sprint-5 FACTS block so the AI now answers from
+sourced notes, not memory; and `grounding_sources` recorded on every AI
+explanation (#028). The #006 safety boundary is now MACHINE-CHECKED — a test
+parses every module under `medical/` and fails if one ever imports `rag/`.
+
+**The payoff moment:** the real model retrieved by MEANING, not words — a
+"feeling tired and weak" query that shares almost no vocabulary with the KB
+surfaced the hemoglobin/anemia snippets. The fake embedder can't do that
+(it's word-overlap), which is exactly why the slow real-BGE test exists: it
+guards the one thing the fast fake cannot prove.
+
+**Two bugs the tests caught, both about process not medicine:** (1)
+`EphemeralClient()` does not isolate — it shares one in-process backend, so a
+fixed collection name collided ("already exists") the moment a second index
+built in one run; fixed with a unique name per build (production, being
+`@cache`d, never noticed). (2) ChromaDB's base `EmbeddingFunction.__init__`
+is a warning-only stub, so "silencing" the warning by CALLING `super()`
+actually re-triggered it — the fix was to override and NOT call super. Same
+lesson twice: a library's defaults encode assumptions you only learn by
+running against the real thing.
+
+**Design win carried from Sprint 5:** because the FACTS seam already existed,
+grounding was an ENRICHMENT, not a rewrite — the prompts already said "use
+only these facts"; we just gave them better facts. Building the prompt seam a
+sprint early paid for itself.
+
+**Carried forward:** the KB is still only CBC and its ranges are STARTER
+values pending sourced review (#019); Sprint 6.5 expands the deterministic
+engine to the full-body panels and grows the KB — the RAG layer absorbs it
+with no code change, which was the whole point. Retrieval is top-K with no
+re-ranking or score threshold yet; revisit if quality needs it.

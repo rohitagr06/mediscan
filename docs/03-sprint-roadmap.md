@@ -81,10 +81,10 @@ Regex/table parsing into `LabResult` · synonym + unit normalization · referenc
 `LLMClient` interface · Gemini + GitHub Models providers · resilient fallback chain (timeouts, backoff) · prompt templates in `prompts/` with prompt-injection defense · schema-validated structured output with repair-retry · four grounded outputs (patient, doctor, dietary, specialist) · deterministic template rung · guardrail pass.
 **Milestone:** grounded, safe, friendly summaries — that degrade gracefully when APIs die (works with ZERO functioning AI). Decisions #024-#026; verified live on Gemini + both GitHub models.
 
-## Sprint 6 — RAG & the Knowledge Base *(full plan: docs/13)*
+## Sprint 6 — RAG & the Knowledge Base ✅ COMPLETE *(full plan: docs/13)*
 
 Author the curated KB (test explanations, diet notes, specialist mapping) · ChromaDB + BGE-small embeddings (in-memory index) · retrieval into the existing prompt seam · grounding sources recorded on every explanation. Full RAG built now; KB-as-data scales to every lab type. RAG feeds the AI layer ONLY, never the deterministic engine (#006).
-**Milestone:** every AI explanation traceable to a KB source.
+**Milestone:** every AI explanation traceable to a KB source. **DONE** — decision #028; retrieval wired into the FACTS seam, `grounding_sources` on every AI output, 20 RAG tests (19 fast with a fake embedder + 1 slow real-BGE) including a machine-checked `medical/`-never-imports-`rag/` boundary.
 
 ## Sprint 6.5 — Full-Panel Scope Expansion *(outline; added per decision #027)*
 
