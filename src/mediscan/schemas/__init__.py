@@ -27,6 +27,13 @@ from mediscan.schemas.confidence import (
     ProcessingMetadata,
     Score,
 )
+from mediscan.schemas.coverage import (
+    AcknowledgeClass,
+    AcknowledgedTest,
+    AssessmentPolicy,
+    AssessmentTier,
+    CoverageResult,
+)
 from mediscan.schemas.documents import DocumentType, ExtractedDocument, PageText
 from mediscan.schemas.extraction import ParseOutcome
 from mediscan.schemas.knowledge import (
@@ -60,8 +67,13 @@ from mediscan.schemas.urgency import UrgencyAssessment, UrgencyLevel
 __all__ = [
     "DEFAULT_DISCLAIMER",
     "AbnormalDirection",
+    "AcknowledgeClass",
+    "AcknowledgedTest",
     "AnalysisReport",
+    "AssessmentPolicy",
+    "AssessmentTier",
     "ConfidenceBreakdown",
+    "CoverageResult",
     "DietaryConsideration",
     "DoctorSummary",
     "DocumentType",
