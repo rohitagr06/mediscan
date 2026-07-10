@@ -46,6 +46,7 @@ from mediscan.schemas.medical import (
     RangeSource,
     SeverityAssessment,
 )
+from mediscan.schemas.patient import PatientContext, Sex
 from mediscan.schemas.report import DEFAULT_DISCLAIMER, AnalysisReport
 from mediscan.schemas.summaries import (
     DietaryConsideration,
@@ -66,25 +67,27 @@ __all__ = [
     "ExplanationProvenance",
     "ExplanationSource",
     "ExtractedDocument",
-    "KnowledgeSnippet",
     "LabResult",
     "LLMRequest",
     "LLMResponse",
     "MediScanModel",
     "PageText",
     "ParseOutcome",
+    "PatientContext",
     "PatientSummary",
     "ProcessingMetadata",
     "CriticalThresholds",
     "RangeResolution",
     "RangeSource",
     "ReferenceRange",
+    "KnowledgeSnippet",
     "ReferenceRangeEntry",
+    "TestKnowledge",
     "Score",
     "Severity",
     "SeverityAssessment",
+    "Sex",
     "SpecialistSuggestion",
-    "TestKnowledge",
     "UrgencyAssessment",
     "UrgencyLevel",
 ]
