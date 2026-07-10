@@ -20,8 +20,30 @@ from mediscan.schemas import KnowledgeSnippet, TestKnowledge
 _KB_DIR = Path(__file__).resolve().parent.parent / "knowledge_base" / "test_knowledge"
 
 
+def load_test_knowledge() -> list[TestKnowledge]:
+    """Read and validate every TestKnowledge JSON entry (whole, un-chunked).
+
+    This is the SINGLE place that parses the test_knowledge KB files.
+    load_snippets chunks these entries into retrievable snippets; the KB
+    integrity checks inspect them whole. Sharing one loader guarantees both
+    views see exactly the same set of entries.
+
+    Returns:
+        Every TestKnowledge across all KB files, validated at load.
+
+    Raises:
+        ValidationError: If any entry is malformed (Pydantic validates it).
+    """
+    entries: list[TestKnowledge] = []
+    for path in sorted(_KB_DIR.glob("*.json")):
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        for item in raw:
+            entries.append(TestKnowledge(**item))  # validates here
+    return entries
+
+
 def load_snippets() -> list[KnowledgeSnippet]:
-    """Read every TestKnowledge JSON file and chunk it into snippets.
+    """Chunk every TestKnowledge entry into individually-retrievable snippets.
 
     Returns:
         All KnowledgeSnippets across every KB file, validated at load.
@@ -30,10 +52,8 @@ def load_snippets() -> list[KnowledgeSnippet]:
         ValidationError: If any entry is malformed (Pydantic validates it).
     """
     snippets: list[KnowledgeSnippet] = []
-    for path in sorted(_KB_DIR.glob("*.json")):
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        for item in raw:
-            snippets.extend(TestKnowledge(**item).to_snippets())
+    for entry in load_test_knowledge():
+        snippets.extend(entry.to_snippets())
     return snippets
 
 

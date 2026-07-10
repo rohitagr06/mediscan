@@ -112,6 +112,21 @@ def policy_for(canonical_name: str) -> AssessmentPolicy | None:
     return _POLICY.get(canonical_name)
 
 
+def policy_test_names() -> set[str]:
+    """Canonical names of every test in the policy table (any tier)."""
+    return set(_POLICY)
+
+
+def assessable_test_names() -> set[str]:
+    """Canonical names of every Tier-A (graded) test in the policy.
+
+    These are exactly the tests that must have BOTH a reference-range entry
+    and a test-knowledge entry — the engine grades them and the explainer
+    describes them. The KB integrity checks assert that coupling.
+    """
+    return {name for name, policy in _POLICY.items() if policy.assessable}
+
+
 def classify_coverage(outcome: ParseOutcome, sex: Sex = Sex.UNKNOWN) -> CoverageResult:
     """Split parsed results into assessed vs acknowledged; keep unparsed lines.
 
