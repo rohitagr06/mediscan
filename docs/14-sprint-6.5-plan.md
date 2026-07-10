@@ -411,7 +411,7 @@ Rohit's architecture review of this plan. Adopted into the tasks above:
 
 Deferred (revisit triggers, not built now):
 - Panel-first KB folder layout (`knowledge_base/lipid/...`) once the KB reaches
-  hundreds of entries - **[OPEN: Rohit to decide reorg-now vs later]**.
+  hundreds of entries - **decided: keep artifact-first for RC1 (~10 panels stay maintainable); revisit panel-first at RC2 scale**.
 - Full `AssessmentPolicy` object model - RC2.
 - Composable parser recognizers - Sprint 7.
 
