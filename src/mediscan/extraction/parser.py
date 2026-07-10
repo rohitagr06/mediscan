@@ -19,6 +19,14 @@ SCOPE (decisions #018, #027)
     Rows without a range, or with negative reference values, are treated
     as unparsed. One-sided ranges cover lipids, HbA1c, and thyroid-style
     tests where the report prints only an upper or a lower limit.
+
+    Real lab reports (e.g. Tata 1mg) print a trailing METHOD column after
+    the range ("... 13.0-17.0 Cyanide Free SLS") and parenthesised names
+    ("Glycosylated Hemoglobin (HbA1c)"). The parser tolerates both: any text
+    after the range is captured as a trailing "tail" and IGNORED — except
+    when the tail is exactly a short flag token (L / H / HH / *), which is
+    kept as flag_in_report. The reference-range shape stays the anchor that
+    tells a real lab row apart from a prose/comment line.
 """
 
 import re
@@ -28,6 +36,11 @@ from pydantic import ValidationError
 from mediscan.schemas import LabResult, ParseOutcome, ReferenceRange
 
 # --- Reference-range grammar (shared building blocks) ----------------------
+# Some reports use typographic dashes (en / em / minus) in ranges
+# ("0.3 – 1.2", "5.7–8.2"). Normalise them to a plain hyphen so the range
+# grammar only ever has to reason about one "-" character.
+_DASH_NORMALIZE = str.maketrans({"–": "-", "—": "-", "−": "-"})
+
 # A number is an unsigned integer or decimal (17 or 13.0). No leading sign:
 # negative reference values are out of scope (#018) and stay unparsed.
 _NUMBER = r"\d+(?:\.\d+)?"
@@ -49,6 +62,12 @@ _RANGE_SRC = rf"\(?\s*(?:{_ONE_SIDED_SRC}|{_TWO_SIDED_SRC})(?:\s*\))?"
 _ONE_SIDED_RE = re.compile(rf"^(?P<op><=|>=|<|>)\s*(?P<num>{_NUMBER})(?:\s*%)?$")
 _TWO_SIDED_RE = re.compile(rf"^(?P<low>{_NUMBER})\s*-\s*(?P<high>{_NUMBER})$")
 
+# A trailing "flag" is a high/low marker (H, L, HH, LL, *) that some reports
+# print after the range. We match ONLY these — not any short token — so a
+# short method abbreviation (e.g. "GPO", "CLIA") is treated as an ignorable
+# method column, never mistaken for a flag.
+_FLAG_RE = re.compile(r"^(?:[HL]{1,2}|\*)$", re.IGNORECASE)
+
 # --- One compiled pattern for a full lab-report row ------------------------
 #   NAME   VALUE   UNIT   RANGE   [FLAG]
 # Compiled once at module load (not per call) — a safety-critical parser
@@ -60,16 +79,25 @@ _LAB_LINE = re.compile(
     # This stays unambiguous because VALUE must be preceded by whitespace: a
     # name has no internal spaces before its number, so "HbA1c 5.4" splits at
     # the space, never inside "HbA1c". Lazy (+?) stops at the first split where
-    # a full "value unit range" follows.
-    r"(?P<name>[A-Za-z][A-Za-z0-9 -]+?)"
+    # a full "value unit range" follows. Parentheses let real names through
+    # ("Glycosylated Hemoglobin (HbA1c)", "Aspartate Transaminase (SGOT)").
+    r"(?P<name>[A-Za-z][A-Za-z0-9 ()-]+?)"
     r"\s+"  # gap
     rf"(?P<value>{_NUMBER})"  # VALUE: integer or decimal
     r"\s+"
     r"(?P<unit>\S+)"  # UNIT: one non-space token
     r"\s+"
+    # Optional interpretive descriptor that some reports print inside the
+    # reference-interval cell BEFORE the number ("Desirable: <100",
+    # "Normal:", "Low (desirable): < 200"). It must end in a colon — a strong
+    # anchor that keeps ordinary prose from being mistaken for a lab row.
+    r"(?:(?P<desc>[A-Za-z()/ ]+?:)\s*)?"
     rf"(?P<range>{_RANGE_SRC})"  # RANGE: two-sided OR one-sided
-    r"(?:\s+(?P<flag>[A-Za-z*]{1,3}))?"  # FLAG: any short trailing marker (h, L, HH, *)
-    r"\s*$"  # optional trailing spaces, end
+    # A comma can glue to the range ("<150, GPO"), so allow a comma/semicolon
+    # OR space as the separator before the trailing text, and permit trailing
+    # punctuation at the very end.
+    r"(?:[\s,;]+(?P<tail>\S.*?))?"  # TAIL: method column or flag, classified below
+    r"[\s,;.]*$"
 )
 
 # A real lab row is well under this. Lines longer than this are skipped
@@ -125,7 +153,7 @@ def parse_lab_text(text: str) -> ParseOutcome:
     unparsed_lines: list[str] = []
 
     for raw_line in text.splitlines():
-        line = raw_line.strip()
+        line = raw_line.strip().translate(_DASH_NORMALIZE)
 
         if not line:
             continue
@@ -152,13 +180,20 @@ def parse_lab_text(text: str) -> ParseOutcome:
             unparsed_lines.append(line)
             continue
 
+        # Classify the trailing text: a short token (L / H / HH / *) is a flag
+        # we keep; anything longer — a Method column like "Cyanide Free SLS" —
+        # is ignored. This is what lets real reports (name value unit range
+        # METHOD) parse without inventing a flag from the method name.
+        tail = match.group("tail")
+        flag = tail.strip() if tail and _FLAG_RE.match(tail.strip()) else None
+
         try:
             result = LabResult(
                 test_name=match.group("name").strip(),
                 value=match.group("value"),
                 unit=match.group("unit"),
                 reference_range=reference_range,
-                flag_in_report=match.group("flag"),
+                flag_in_report=flag,
             )
         except ValidationError:
             # The row matched the expected structure but failed schema

@@ -202,3 +202,74 @@ def test_numeric_header_still_unparsed():
     outcome = parse_lab_text("Page 1 of 2")
     assert outcome.results == []
     assert outcome.unparsed_lines == ["Page 1 of 2"]
+
+
+# ---------- real-report robustness (Sprint 6.5.2c) ----------
+# These pin the formats found in a real Tata 1mg report: a trailing Method
+# column, parenthesised names, an interpretive "Desirable:" descriptor before
+# the range, typographic dashes, and a trailing comma.
+
+
+def test_trailing_method_column_is_ignored():
+    r = parse_lab_text("Hemoglobin 15.3 g/dL 13.0-17.0 Cyanide Free SLS").results[0]
+    assert r.test_name == "Hemoglobin"
+    assert (r.reference_range.low, r.reference_range.high) == (13.0, 17.0)
+    assert r.flag_in_report is None  # "Cyanide Free SLS" is a method, not a flag
+
+
+def test_parenthesised_name_parses():
+    r = parse_lab_text(
+        "Glycosylated Hemoglobin (HbA1c) 5.4 % 4-5.6 HPLC (NGSP certified)"
+    ).results[0]
+    assert r.test_name == "Glycosylated Hemoglobin (HbA1c)"
+    assert (r.reference_range.low, r.reference_range.high) == (4.0, 5.6)
+
+
+def test_colon_descriptor_before_range_is_ignored():
+    r = parse_lab_text(
+        "Cholesterol - LDL 131 mg/dL Desirable: <100 Calculated"
+    ).results[0]
+    assert r.test_name == "Cholesterol - LDL"
+    assert r.reference_range.low is None
+    assert r.reference_range.high == 100.0
+
+
+def test_typographic_en_dash_range():
+    # the range uses an en-dash "–" (not a hyphen); it must normalise and parse.
+    r = parse_lab_text(
+        "Bilirubin-Total 0.63 mg/dL 0.3 – 1.2 Vanadate oxidation"
+    ).results[0]
+    assert (r.reference_range.low, r.reference_range.high) == (0.3, 1.2)
+
+
+def test_trailing_comma_after_range_and_short_method_not_a_flag():
+    r = parse_lab_text("Triglycerides 89 mg/dL Normal: <150, GPO").results[0]
+    assert r.reference_range.high == 150.0
+    # "GPO" is a 3-letter METHOD, not a high/low flag — must not be captured.
+    assert r.flag_in_report is None
+
+
+def test_real_high_low_flag_still_detected():
+    assert (
+        parse_lab_text("Hemoglobin 9.8 g/dL 13.0-17.0 H").results[0].flag_in_report
+        == "H"
+    )
+    assert (
+        parse_lab_text("Hemoglobin 9.8 g/dL 13.0-17.0 L").results[0].flag_in_report
+        == "L"
+    )
+
+
+def test_qualitative_and_prose_stay_unparsed():
+    # these SHOULD NOT parse: a qualitative value, a non-numeric range, a
+    # risk-word range, and ordinary comment prose. Never force a lab row.
+    lines = [
+        "Glucose Negative Negative GOD-POD",  # value is "Negative", not numeric
+        "Estimated average glucose (eAG) 108.28 mg/dL Not established Calculated",
+        "Cholesterol - HDL 47 mg/dL Undesirable/high risk Accelerator Selective",
+        "As per the recommendation of International council for Standardization",
+    ]
+    for line in lines:
+        outcome = parse_lab_text(line)
+        assert outcome.results == [], line
+        assert outcome.unparsed_lines == [line], line
