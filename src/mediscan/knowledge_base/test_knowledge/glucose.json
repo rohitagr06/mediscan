@@ -1,0 +1,29 @@
+[
+  {
+    "test_name": "HbA1c",
+    "what_it_measures": "the average blood sugar level over the past two to three months, reported as a percentage",
+    "low_meaning": "a low HbA1c is usually not a concern and can occasionally reflect anaemias or conditions that shorten red-cell life",
+    "high_meaning": "a high HbA1c can be associated with prediabetes or diabetes and with longer-term risk of related complications",
+    "dietary_note": "balanced meals with controlled refined carbohydrates and regular activity are commonly discussed for blood-sugar control",
+    "specialist": "Endocrinologist",
+    "source": "MedlinePlus: Hemoglobin A1C (HbA1c) Test"
+  },
+  {
+    "test_name": "Fasting Glucose",
+    "what_it_measures": "the level of glucose (sugar) in the blood after fasting, typically overnight",
+    "low_meaning": "a low fasting glucose (hypoglycaemia) can cause symptoms such as shakiness or dizziness and has many possible causes",
+    "high_meaning": "a high fasting glucose can be associated with prediabetes or diabetes",
+    "dietary_note": "regular meal timing and limiting sugary foods are commonly discussed for blood-sugar balance",
+    "specialist": "Endocrinologist",
+    "source": "MedlinePlus: Blood Glucose Test"
+  },
+  {
+    "test_name": "Postprandial Glucose",
+    "what_it_measures": "the level of glucose in the blood after a meal, usually measured two hours afterward",
+    "low_meaning": "a low post-meal glucose is uncommon and can accompany certain metabolic conditions",
+    "high_meaning": "a high post-meal glucose can be associated with impaired glucose tolerance or diabetes",
+    "dietary_note": "portion size and the balance of carbohydrates, protein and fibre in a meal are commonly discussed for post-meal glucose",
+    "specialist": "Endocrinologist",
+    "source": "MedlinePlus: Glucose Tolerance Test"
+  }
+]

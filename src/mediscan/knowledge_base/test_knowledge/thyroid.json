@@ -1,0 +1,29 @@
+[
+  {
+    "test_name": "TSH",
+    "what_it_measures": "thyroid-stimulating hormone, made by the pituitary gland to regulate the thyroid",
+    "low_meaning": "a low TSH can be associated with an overactive thyroid (hyperthyroidism)",
+    "high_meaning": "a high TSH can be associated with an underactive thyroid (hypothyroidism)",
+    "dietary_note": "adequate iodine intake is commonly discussed for thyroid health, though needs vary by individual",
+    "specialist": "Endocrinologist",
+    "source": "MedlinePlus: TSH (Thyroid-Stimulating Hormone) Test"
+  },
+  {
+    "test_name": "Free T3",
+    "what_it_measures": "the active, unbound form of triiodothyronine (T3), a thyroid hormone that regulates metabolism",
+    "low_meaning": "a low free T3 can be associated with an underactive thyroid or with non-thyroid illness",
+    "high_meaning": "a high free T3 can be associated with an overactive thyroid",
+    "dietary_note": "thyroid-related nutrition is best individualised with a clinician",
+    "specialist": "Endocrinologist",
+    "source": "MedlinePlus: T3 Test"
+  },
+  {
+    "test_name": "Free T4",
+    "what_it_measures": "the active, unbound form of thyroxine (T4), the main hormone the thyroid releases",
+    "low_meaning": "a low free T4 can be associated with an underactive thyroid (hypothyroidism)",
+    "high_meaning": "a high free T4 can be associated with an overactive thyroid (hyperthyroidism)",
+    "dietary_note": "thyroid-related nutrition is best individualised with a clinician",
+    "specialist": "Endocrinologist",
+    "source": "MedlinePlus: T4 Test"
+  }
+]

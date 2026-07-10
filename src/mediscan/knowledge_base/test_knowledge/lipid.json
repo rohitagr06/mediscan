@@ -1,0 +1,56 @@
+[
+  {
+    "test_name": "Total Cholesterol",
+    "what_it_measures": "the total amount of cholesterol in the blood, combining LDL, HDL and other lipid fractions",
+    "low_meaning": "a low total cholesterol is uncommon and usually not a concern on its own; it can occasionally accompany malnutrition, liver disease or an overactive thyroid",
+    "high_meaning": "a high total cholesterol can be associated with an increased risk of heart disease and stroke over time",
+    "dietary_note": "diets lower in saturated and trans fats and higher in fibre are commonly discussed for cholesterol",
+    "specialist": "Cardiologist",
+    "source": "MedlinePlus: Cholesterol Levels"
+  },
+  {
+    "test_name": "Triglycerides",
+    "what_it_measures": "the level of triglycerides, a type of fat the body uses for energy, in the blood",
+    "low_meaning": "a low triglyceride level is generally not a concern and can reflect a low-fat diet or fasting",
+    "high_meaning": "a high triglyceride level can be associated with increased cardiovascular risk and is often linked with excess weight, alcohol or uncontrolled diabetes",
+    "dietary_note": "limiting sugar, refined carbohydrates and alcohol is commonly discussed for high triglycerides",
+    "specialist": "Cardiologist",
+    "source": "MedlinePlus: Triglyceride Level"
+  },
+  {
+    "test_name": "HDL Cholesterol",
+    "what_it_measures": "high-density lipoprotein (HDL), often called 'good' cholesterol, which helps remove other cholesterol from the blood",
+    "low_meaning": "a low HDL can be associated with a higher risk of heart disease",
+    "high_meaning": "a higher HDL is generally considered protective for the heart",
+    "dietary_note": "regular physical activity and healthy unsaturated fats are commonly discussed to support HDL",
+    "specialist": "Cardiologist",
+    "source": "MedlinePlus: HDL: The Good Cholesterol"
+  },
+  {
+    "test_name": "LDL Cholesterol",
+    "what_it_measures": "low-density lipoprotein (LDL), often called 'bad' cholesterol, which can build up in artery walls",
+    "low_meaning": "a low LDL is generally considered favourable for heart health",
+    "high_meaning": "a high LDL can be associated with a higher risk of heart disease and stroke",
+    "dietary_note": "reducing saturated and trans fats and increasing soluble fibre are commonly discussed for high LDL",
+    "specialist": "Cardiologist",
+    "source": "MedlinePlus: LDL: The Bad Cholesterol"
+  },
+  {
+    "test_name": "VLDL Cholesterol",
+    "what_it_measures": "very-low-density lipoprotein (VLDL), a cholesterol fraction that carries triglycerides in the blood",
+    "low_meaning": "a low VLDL is generally not a concern",
+    "high_meaning": "a high VLDL can be associated with increased cardiovascular risk and often tracks with high triglycerides",
+    "dietary_note": "the dietary measures discussed for triglycerides also apply to VLDL",
+    "specialist": "Cardiologist",
+    "source": "MedlinePlus: VLDL Cholesterol"
+  },
+  {
+    "test_name": "Non-HDL Cholesterol",
+    "what_it_measures": "all the cholesterol that is not HDL (total cholesterol minus HDL), capturing the atherogenic particles",
+    "low_meaning": "a lower non-HDL cholesterol is generally considered favourable",
+    "high_meaning": "a high non-HDL cholesterol can be associated with increased cardiovascular risk and is sometimes a better overall risk marker than LDL alone",
+    "dietary_note": "the same heart-healthy dietary patterns discussed for LDL apply to non-HDL cholesterol",
+    "specialist": "Cardiologist",
+    "source": "MedlinePlus: Cholesterol Levels"
+  }
+]

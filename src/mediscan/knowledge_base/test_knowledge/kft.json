@@ -1,0 +1,38 @@
+[
+  {
+    "test_name": "Creatinine",
+    "what_it_measures": "a waste product from muscle activity that the kidneys filter out; it reflects kidney function",
+    "low_meaning": "a low creatinine is usually not a concern and can reflect lower muscle mass",
+    "high_meaning": "a high creatinine can be associated with reduced kidney function",
+    "dietary_note": "adequate hydration is commonly discussed; specific protein changes are best individualised with a clinician",
+    "specialist": "Nephrologist",
+    "source": "MedlinePlus: Creatinine Test"
+  },
+  {
+    "test_name": "Urea",
+    "what_it_measures": "a waste product from protein breakdown that the kidneys remove from the blood",
+    "low_meaning": "a low urea can accompany a low-protein diet, overhydration or some liver conditions",
+    "high_meaning": "a high urea can be associated with reduced kidney function or dehydration",
+    "dietary_note": "adequate fluid intake is commonly discussed; protein changes are best individualised",
+    "specialist": "Nephrologist",
+    "source": "MedlinePlus: BUN (Blood Urea Nitrogen)"
+  },
+  {
+    "test_name": "Blood Urea Nitrogen",
+    "what_it_measures": "the amount of nitrogen in the blood that comes from urea, a marker of kidney function",
+    "low_meaning": "a low BUN can accompany a low-protein diet, overhydration or some liver conditions",
+    "high_meaning": "a high BUN can be associated with reduced kidney function, dehydration or a high-protein intake",
+    "dietary_note": "adequate hydration is commonly discussed for BUN",
+    "specialist": "Nephrologist",
+    "source": "MedlinePlus: BUN (Blood Urea Nitrogen)"
+  },
+  {
+    "test_name": "Uric Acid",
+    "what_it_measures": "a waste product formed when the body breaks down purines; the kidneys remove most of it",
+    "low_meaning": "a low uric acid is uncommon and usually not a concern",
+    "high_meaning": "a high uric acid can be associated with gout or kidney stones in some people",
+    "dietary_note": "limiting purine-rich foods and alcohol is commonly discussed for high uric acid",
+    "specialist": "Rheumatologist",
+    "source": "MedlinePlus: Uric Acid Test"
+  }
+]
