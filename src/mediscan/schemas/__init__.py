@@ -31,6 +31,7 @@ from mediscan.schemas.documents import DocumentType, ExtractedDocument, PageText
 from mediscan.schemas.extraction import ParseOutcome
 from mediscan.schemas.knowledge import (
     KnowledgeSnippet,
+    RangeBounds,
     ReferenceRangeEntry,
     TestKnowledge,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "PatientSummary",
     "ProcessingMetadata",
     "CriticalThresholds",
+    "RangeBounds",
     "RangeResolution",
     "RangeSource",
     "ReferenceRange",

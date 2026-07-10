@@ -14,30 +14,24 @@ from pydantic import Field, model_validator
 from mediscan.schemas.base import MediScanModel
 
 
-class ReferenceRangeEntry(MediScanModel):
-    """One curated reference-range fact for a single lab test.
+class RangeBounds(MediScanModel):
+    """A normal range plus optional critical thresholds.
 
-    test_name MUST match the canonical output of normalize_test_name so
-    the engine's lookup succeeds. Critical thresholds are optional and,
-    when present, must sit OUTSIDE the normal range (a critical-low is
-    below the normal low; a critical-high is above the normal high).
+    Used both as a test's shared/default bounds and as a per-sex block.
+    Supports ONE-SIDED ranges: `low` OR `high` may be absent (e.g. LDL is
+    only "< 100", so low=None, high=100), but at least one must be present.
+    A critical threshold is only meaningful on a side that HAS a normal
+    bound, and must sit OUTSIDE it.
     """
 
-    test_name: str = Field(
-        min_length=1, description="Canonical test name (matches normalization output)."
+    # allow_inf_nan=False rejects NaN/Infinity — a NaN bound would slip past
+    # the comparisons below (every comparison with NaN is False), silently
+    # disabling a bound: an "unknown masquerades as fine" hole (#011).
+    low: float | None = Field(
+        default=None, allow_inf_nan=False, description="Lower bound, or None."
     )
-    unit: str | None = Field(
-        default=None, description="Canonical unit for this test, if any."
-    )
-    # allow_inf_nan=False rejects NaN/Infinity. Without it a NaN bound
-    # would slip through the check_bounds comparison below (every
-    # comparison with NaN is False), silently disabling that bound — an
-    # "unknown masquerades as fine" hole (#011) hiding inside the KB.
-    low: float = Field(
-        allow_inf_nan=False, description="Lower bound of the normal adult range."
-    )
-    high: float = Field(
-        allow_inf_nan=False, description="Upper bound of the normal adult range."
+    high: float | None = Field(
+        default=None, allow_inf_nan=False, description="Upper bound, or None."
     )
     critical_low: float | None = Field(
         default=None,
@@ -49,6 +43,59 @@ class ReferenceRangeEntry(MediScanModel):
         allow_inf_nan=False,
         description="Value at/above which the result is critical.",
     )
+
+    @model_validator(mode="after")
+    def check_bounds(self):
+        if self.low is None and self.high is None:
+            raise ValueError("a range needs at least one of low / high")
+        if self.low is not None and self.high is not None and self.low >= self.high:
+            raise ValueError(f"low ({self.low}) must be < high ({self.high})")
+        if self.critical_low is not None:
+            if self.low is None:
+                raise ValueError("critical_low set but there is no normal low")
+            if self.critical_low >= self.low:
+                raise ValueError(
+                    f"critical_low ({self.critical_low}) must be below the "
+                    f"normal low ({self.low})"
+                )
+        if self.critical_high is not None:
+            if self.high is None:
+                raise ValueError("critical_high set but there is no normal high")
+            if self.critical_high <= self.high:
+                raise ValueError(
+                    f"critical_high ({self.critical_high}) must be above the "
+                    f"normal high ({self.high})"
+                )
+        return self
+
+
+class ReferenceRangeEntry(MediScanModel):
+    """One curated reference-range fact for a single lab test.
+
+    test_name MUST match the canonical output of normalize_test_name so the
+    engine's lookup succeeds. The default bounds (low/high/critical_*) are
+    the sex-independent range; sex-dependent tests instead provide `male`
+    and `female` blocks. An entry must be resolvable for any sex: it needs
+    EITHER default bounds OR both a male and a female block.
+    """
+
+    test_name: str = Field(
+        min_length=1, description="Canonical test name (matches normalization output)."
+    )
+    unit: str | None = Field(
+        default=None, description="Canonical unit for this test, if any."
+    )
+    # Default (sex-independent) bounds — optional so one-sided ranges work and
+    # so a purely sex-specific test can omit them in favour of male/female.
+    low: float | None = Field(default=None, allow_inf_nan=False)
+    high: float | None = Field(default=None, allow_inf_nan=False)
+    critical_low: float | None = Field(default=None, allow_inf_nan=False)
+    critical_high: float | None = Field(default=None, allow_inf_nan=False)
+    # Optional per-sex overrides for sex-dependent tests (Hemoglobin,
+    # Creatinine, Ferritin, ...). Report-printed ranges are already sex-correct
+    # (#023), so these only affect the KB FALLBACK.
+    male: RangeBounds | None = Field(default=None)
+    female: RangeBounds | None = Field(default=None)
     source: str = Field(
         min_length=1,
         description="Citation for these numbers — mandatory (no anonymous facts).",
@@ -56,21 +103,29 @@ class ReferenceRangeEntry(MediScanModel):
 
     @model_validator(mode="after")
     def check_bounds(self):
-        if self.low >= self.high:
+        has_default = self.low is not None or self.high is not None
+        has_both_sexes = self.male is not None and self.female is not None
+        if not has_default and not has_both_sexes:
             raise ValueError(
-                f"{self.test_name}: low ({self.low}) must be < high ({self.high})"
+                f"{self.test_name}: provide default low/high, or BOTH a male and "
+                f"a female block, so the entry resolves for any sex"
             )
-        if self.critical_low is not None and self.critical_low >= self.low:
-            raise ValueError(
-                f"{self.test_name}: critical_low ({self.critical_low}) must be "
-                f"below the normal low ({self.low})"
-            )
-        if self.critical_high is not None and self.critical_high <= self.high:
-            raise ValueError(
-                f"{self.test_name}: critical_high ({self.critical_high}) must be "
-                f"above the normal high ({self.high})"
-            )
+        if has_default:
+            # reuse RangeBounds validation for the default bounds (raises on a
+            # bad low/high or a critical on the wrong side)
+            self.default_bounds()
         return self
+
+    def default_bounds(self) -> "RangeBounds | None":
+        """The sex-independent bounds as a RangeBounds, or None if not given."""
+        if self.low is None and self.high is None:
+            return None
+        return RangeBounds(
+            low=self.low,
+            high=self.high,
+            critical_low=self.critical_low,
+            critical_high=self.critical_high,
+        )
 
 
 class KnowledgeSnippet(MediScanModel):
@@ -82,11 +137,7 @@ class KnowledgeSnippet(MediScanModel):
 
 
 class TestKnowledge(MediScanModel):
-    """Curated, sourced explanation content for one lab test.
-
-    Turned into individually-retrievable KnowledgeSnippets by to_snippets().
-    Every statement is informational, never a diagnosis or treatment.
-    """
+    """Curated, sourced explanation content for one lab test."""
 
     test_name: str = Field(min_length=1, description="Canonical test name.")
     what_it_measures: str = Field(min_length=1)
@@ -96,13 +147,12 @@ class TestKnowledge(MediScanModel):
     )
     dietary_note: str | None = Field(default=None)
     specialist: str | None = Field(default=None)
-    source: str = Field(min_length=1, description="Citation — mandatory (#019).")
+    source: str = Field(min_length=1, description="Citation - mandatory (#019).")
 
     def to_snippets(self) -> list[KnowledgeSnippet]:
         """Split this entry into one sourced snippet per idea (chunking)."""
 
         def snip(text: str) -> KnowledgeSnippet:
-            # every snippet carries the SAME source + test_name as this entry
             return KnowledgeSnippet(
                 text=text, source=self.source, test_name=self.test_name
             )

@@ -101,3 +101,42 @@ def test_one_sided_report_range_drops_unguardable_critical() -> None:
 
     assert resolution.critical_thresholds.low is None  # no report.low to guard
     assert resolution.critical_thresholds.high == 20.0  # 20 > 17, kept
+
+
+# --- sex-aware resolution helpers (Sprint 6.5.5) ---
+
+
+def test_union_takes_widest_normal_band():
+    from mediscan.medical.ranges import _union
+    from mediscan.schemas import RangeBounds
+
+    u = _union(RangeBounds(low=13.0, high=17.0), RangeBounds(low=12.0, high=15.0))
+    assert (u.low, u.high) == (12.0, 17.0)  # widest (min low, max high) — #029
+
+
+def test_bounds_for_sex_picks_matching_block_else_unions():
+    from mediscan.medical.ranges import _bounds_for_sex
+    from mediscan.schemas import ReferenceRangeEntry, Sex
+
+    e = ReferenceRangeEntry(
+        test_name="Hemoglobin",
+        male={"low": 13.0, "high": 17.0},
+        female={"low": 12.0, "high": 15.0},
+        source="Example Lab",
+    )
+    assert _bounds_for_sex(e, Sex.MALE).low == 13.0
+    assert _bounds_for_sex(e, Sex.FEMALE).high == 15.0
+    # UNKNOWN -> union of both sexes
+    assert (
+        _bounds_for_sex(e, Sex.UNKNOWN).low,
+        _bounds_for_sex(e, Sex.UNKNOWN).high,
+    ) == (12.0, 17.0)
+
+
+def test_bounds_for_sex_falls_back_to_default_when_not_sex_specific():
+    from mediscan.medical.ranges import _bounds_for_sex
+    from mediscan.schemas import ReferenceRangeEntry, Sex
+
+    e = ReferenceRangeEntry(test_name="LDL Cholesterol", high=100.0, source="NCEP")
+    for sex in (Sex.MALE, Sex.FEMALE, Sex.UNKNOWN):
+        assert _bounds_for_sex(e, sex).high == 100.0
