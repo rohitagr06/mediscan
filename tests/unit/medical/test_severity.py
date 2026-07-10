@@ -362,3 +362,72 @@ def test_inverted_pct_cutoffs_are_rejected():
 
     with pytest.raises(ValidationError):
         Settings(severity_pct_mild=0.5, severity_pct_moderate=0.2)
+
+
+# ---------------------------------------------------------------------------
+# One-sided ranges (Sprint 6.5.6): ONLY the bounded side can be abnormal.
+# The engine's `None`-bound guards (from Sprint 4) already enforce this; these
+# tests pin it so it can never silently regress.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (60.0, (Severity.NORMAL, None)),  # under the limit -> normal
+        (5.0, (Severity.NORMAL, None)),  # very low -> STILL normal (no false LOW)
+        (100.0, (Severity.NORMAL, None)),  # exactly on the limit -> normal (strict)
+    ],
+)
+def test_one_sided_upper_never_flags_low(value, expected):
+    # LDL-style "< 100": no lower bound, so a low value cannot be abnormal.
+    assert _band(value, res_no_criticals(low=None, high=100.0)) == expected
+
+
+def test_one_sided_upper_over_limit_flags_high_only():
+    sev, direction = _band(190.0, res_no_criticals(low=None, high=100.0))
+    assert direction is AbnormalDirection.HIGH
+    assert sev not in (None, Severity.NORMAL)
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (55.0, (Severity.NORMAL, None)),  # over the lower limit -> normal
+        (500.0, (Severity.NORMAL, None)),  # very high -> STILL normal (no false HIGH)
+        (40.0, (Severity.NORMAL, None)),  # exactly on the limit -> normal
+    ],
+)
+def test_one_sided_lower_never_flags_high(value, expected):
+    # HDL-style "> 40": no upper bound, so a high value cannot be abnormal.
+    assert _band(value, res_no_criticals(low=40.0, high=None)) == expected
+
+
+def test_one_sided_lower_under_limit_flags_low_only():
+    sev, direction = _band(30.0, res_no_criticals(low=40.0, high=None))
+    assert direction is AbnormalDirection.LOW
+    assert sev not in (None, Severity.NORMAL)
+
+
+def test_one_sided_upper_with_sourced_critical_reaches_critical():
+    # "< 100" with a sourced critical_high of 190; 200 is past it -> CRITICAL.
+    r = res_with_criticals(low=None, high=100.0, critical_low=None, critical_high=190.0)
+    assert _band(200.0, r) == (Severity.CRITICAL, AbnormalDirection.HIGH)
+
+
+def test_assess_functions_accept_sex_argument():
+    # sex threads through to resolution; for a non-sex-aware test it changes
+    # nothing, but the entry points must accept it.
+    from mediscan.schemas import Sex
+
+    labs = [
+        LabResult(
+            test_name="Hemoglobin",
+            value=9.8,
+            reference_range=ReferenceRange(low=13.0, high=17.0),
+        )
+    ]
+    a_default = assess_results(labs)
+    a_male = assess_results(labs, Sex.MALE)
+    assert a_default[0].severity == a_male[0].severity
+    assert a_male[0].abnormal_direction is AbnormalDirection.LOW

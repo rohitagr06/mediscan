@@ -12,6 +12,7 @@ from mediscan.schemas import (
     RangeResolution,
     Severity,
     SeverityAssessment,
+    Sex,
 )
 
 
@@ -83,10 +84,15 @@ def _band(
     return Severity.HIGH, direction
 
 
-def assess_lab_result(result: LabResult) -> SeverityAssessment:
+def assess_lab_result(result: LabResult, sex: Sex = Sex.UNKNOWN) -> SeverityAssessment:
     """Judge one lab result. Pure: returns a NEW SeverityAssessment,
-    never mutates the input (decision #021)."""
-    resolution = resolve_reference_range(result)
+    never mutates the input (decision #021).
+
+    `sex` is passed through to range resolution so a sex-dependent test uses
+    the right KB fallback range. It defaults to UNKNOWN, so callers that don't
+    know the patient's sex behave exactly as before.
+    """
+    resolution = resolve_reference_range(result, sex)
     severity, direction = _band(result.value, resolution)
     return SeverityAssessment(
         test_name=result.test_name,
@@ -97,6 +103,8 @@ def assess_lab_result(result: LabResult) -> SeverityAssessment:
     )
 
 
-def assess_results(results: list[LabResult]) -> list[SeverityAssessment]:
+def assess_results(
+    results: list[LabResult], sex: Sex = Sex.UNKNOWN
+) -> list[SeverityAssessment]:
     """Judge many results, in order (positionally aligned with input)."""
-    return [assess_lab_result(r) for r in results]
+    return [assess_lab_result(r, sex) for r in results]
