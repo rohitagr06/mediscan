@@ -232,152 +232,127 @@ now, so nothing is ever lost in between.
 
 ---
 
-## Schema changes (small, additive)
+## Schema & module changes (small, additive)
 
-- **`PatientContext`** (new): a tiny model holding `sex: Sex` (an enum
-  `MALE` / `FEMALE` / `UNKNOWN`) and optionally `age`. Read from the report;
-  `UNKNOWN` is a first-class value (never guessed).
-- **`ReferenceRangeEntry`** (extend): allow optional per-sex variants
-  alongside the existing shared range. Backward-compatible — CBC's current
-  entries keep working unchanged.
-- **A coverage/result structure** that carries the two buckets (assessed vs
-  acknowledged) plus the acknowledged label (`numeric` | `sensitive`), so
-  nothing read from the report is ever lost between engine and report.
-- No change needed to `ReferenceRange` (already supports one-sided).
+- **`PatientContext`** (new, in its OWN module `schemas/patient.py`): `sex`
+  (`MALE`/`FEMALE`/`UNKNOWN`) + optional `age`. Its own home because it WILL
+  grow (pregnancy, fasting state, collection time, menstrual phase, sample
+  type). `UNKNOWN` is first-class (never guessed).
+- **`ReferenceRangeEntry`** (extend): allow a `null` bound (one-sided) and
+  optional per-sex blocks (`male`/`female`) beside the shared range.
+  Backward-compatible; CBC entries unchanged.
+- **`CoverageResult`** (new schema): `assessed` / `acknowledged` / `unparsed`
+  as one explicit object, not three loose lists — easier to evolve.
+- **`AssessmentPolicy`** (new, MINIMAL for RC1 — DATA, not code): a table keyed
+  by canonical name -> `{assessable, classification, tier}`, kept SEPARATE from
+  the medical KB (KB = facts; policy = product behavior). The sensitivity
+  classification lives HERE, not in the knowledge files. Full object model = RC2.
+- No change to `ReferenceRange` (already one-sided-ready).
 
 ---
 
 ## Tasks
 
-Same format as Sprint 6: **What → Why → Steps (beginner explanations) →
-Safety/scale note → Done when.** Every new line of code gets a beginner
-walkthrough when we write it.
+Same format as Sprint 6 (What -> Why -> Steps -> Safety/scale -> Done when).
+**Order updated per review:** normalization now precedes resolution/severity,
+since resolution, the allowlist, and KB lookup all key on canonical names.
 
-### 6.5.1 — Scope lock + concept session — OWNER: pair (~1h)
+### 6.5.1 - Scope lock + concept session - OWNER: pair (~1h) [DECIDED]
 
-**What:** agree the Tier A/B/C list and the "acknowledge, don't skip" behavior
-before touching code. **Why:** scope is a safety decision; we lock it, then
-build. **Steps:** walk the tiers together; Rohit confirms the Tier-A cut, the
-sex-unknown fallback (6.5.4), and the sensitive-vs-numeric acknowledged wording
-(6.5.6). **Done when:** the tier list + acknowledge behavior are confirmed and
-decision #029 is drafted.
+Tiers, union fallback, split-by-sensitivity, and the first-wave cut are locked
+in "Decisions locked" below. Decision #029 drafted.
 
-### 6.5.2 — Parser: one-sided ranges — OWNER: Rohit core + Claude tests (~2.5h)
+### 6.5.2 - Parser: one-sided ranges - OWNER: Rohit core + Claude tests (~2.5h)
 
-**What:** extend `parser.py` to recognize `< X`, `> X`, `<= X`, `>= X` (and a
-trailing `%` unit) in addition to `LOW - HIGH`. **Why:** the parser is the
-gate — it can't read a lipid/HbA1c line today. **Steps:** add pattern(s) for
-one-sided ranges that build a `ReferenceRange(low=None, high=X)` or
-`(low=X, high=None)`; keep the tolerant "unrecognized line becomes unparsed,
-never a crash" contract; update decision #018's note. **Safety/scale note:**
-still anchored on a printed range shape, so headers/noise stay unparsed.
-**Done when:** an `LDL 82 mg/dL < 100` style line parses into a one-sided
-`ReferenceRange`; garbage lines still land in `unparsed_lines`.
+Read `< X`, `> X`, `<= X`, `>= X` (and a trailing `%`) besides `LOW - HIGH`,
+building a one-sided `ReferenceRange`. **Do this by extracting range
+recognition into its own small, testable function** - the seed of the
+composable-recognizer split that comes in Sprint 7 (we don't build that
+framework now, we just stop the ONE regex from growing further). Keep the
+tolerant "unknown line -> unparsed, never crash" contract. **Done when:**
+`LDL 82 mg/dL < 100` parses one-sided; noise still unparsed.
 
-### 6.5.3 — Read patient sex from the report — OWNER: pair (~1.5h)
+### 6.5.3 - Patient metadata (own module) - OWNER: pair (~1.5h)
 
-**What:** `extraction/metadata.py` → a function that scans report text for a
-sex/gender line and returns a `PatientContext`. **Why:** sex-aware ranges need
-the patient's sex, and the report is the honest source. **Steps:** a small,
-tolerant regex for "Sex: Male", "Gender: F", etc.; return `Sex.UNKNOWN` when
-absent (never guess). **Safety/scale note:** unknown is explicit (#011).
-**Done when:** the extractor reads M/F from a header and returns UNKNOWN when
-the report is silent.
+`schemas/patient.py::PatientContext` (`sex`, optional `age`) + an
+`extraction/metadata.py` that reads sex from the report ("Sex: Male"),
+returning `UNKNOWN` when absent. **Safety:** unknown is explicit (#011).
+**Done when:** sex read from a header; UNKNOWN when silent.
 
-### 6.5.4 — Sex-aware + one-sided range resolution — OWNER: Rohit core + Claude tests (~2.5h)
+### 6.5.4 - Normalization: new synonyms & units - OWNER: Rohit (~1.5h)
 
-**What:** thread `PatientContext` into `resolve_reference_range`, and pick the
-sex-specific KB range when the report doesn't print its own. **Why:** correct
-banding for Hemoglobin/Creatinine/Ferritin depends on sex. **Steps:** extend
-`ReferenceRangeEntry` with optional per-sex ranges; prefer the report's printed
-range (already sex-correct), else pick the KB range for the patient's sex; when
-sex is UNKNOWN apply the agreed fallback (recommended default: **union** of both
-sexes' ranges for the normal band so we don't false-flag, noting reduced
-confidence — confirm in 6.5.1). **Safety/scale note:** report-first is
-unchanged (#023); sex only affects the KB fallback. **Done when:** a female vs
-male Hemoglobin with no printed range resolves to different KB ranges; UNKNOWN
-uses the fallback.
+Grow the synonym/unit maps for all first-wave tests (SGPT<->ALT, SGOT<->AST,
+name + unit variants). **Moved early** because resolution, the allowlist, and
+KB lookup all key on canonical names. Data-only. **Done when:**
+"SGPT"/"ALT"/"Alanine Aminotransferase" canonicalize to one name.
 
-### 6.5.5 — Severity banding for one-sided ranges — OWNER: Rohit core + Claude tests (~2h)
+### 6.5.5 - Sex-aware + one-sided range resolution - OWNER: Rohit core + Claude tests (~2.5h)
 
-**What:** teach `severity.py` to band only the bounded side(s). **Why:** a
-value below an "upper-limit-only" range is NORMAL, not low — banding the
-missing side would invent medicine. **Steps:** where a bound is `None`, that
-direction cannot be abnormal; grade only the side with a bound
-(percentage/Option-A, or Option-B fraction if a sourced critical exists on that
-side, capped at HIGH per #020). **Safety/scale note:** upholds #006 — no
-invented CRITICAL, no invented direction. **Done when:** `LDL 60` (range
-`< 100`) is NORMAL; `LDL 190` is graded HIGH-side only; truth-table tests cover
-both one-sided directions.
+Thread `PatientContext` into `resolve_reference_range`; extend
+`ReferenceRangeEntry` (null bound + per-sex blocks); prefer the report's
+printed range, else the sex-specific KB range, else (sex unknown) the UNION of
+both sexes' ranges with reduced confidence. **Safety:** report-first unchanged
+(#023). **Done when:** male vs female Creatinine with no printed range resolve
+differently; UNKNOWN unions.
 
-### 6.5.6 — Coverage classification + assessment allowlist — OWNER: Rohit core + Claude tests (~2h)
+### 6.5.6 - Severity banding for one-sided ranges - OWNER: Rohit core + Claude tests (~2h)
 
-**What:** gate the engine so it ASSESSES only tests on the curated Tier-A
-allowlist, and route every other parsed test into an "acknowledged, not
-assessed" list carrying a `numeric` vs `sensitive` label. **Why:** a public
-tool meets reports full of out-of-scope tests; skipping them is unsafe (#011),
-grading them is unsafe (#006) — acknowledge instead. This is the guard that
-stops a parsed `PSA` line from ever getting a severity. **Steps:** add an
-"assessable" check keyed on curated KB membership; produce two buckets
-(assessed / acknowledged) + the acknowledged label; ensure acknowledged tests
-NEVER touch the urgency roll-up; unreadable lines stay surfaced separately.
-**Safety/scale note:** the allowlist is DATA — a test becomes assessable when
-its KB entry is authored, so growth is graceful and honest. **Done when:** a
-report mixing Hemoglobin (assessed), PSA (acknowledged-sensitive), and an
-unknown numeric test (acknowledged-numeric) yields one graded finding + two
-acknowledged entries, and urgency reflects only the Hemoglobin.
+Band only the bounded side(s); a `None` bound means that direction cannot be
+abnormal - no invented direction, no invented CRITICAL (#006/#020). **Done
+when:** `LDL 60` (`< 100`) is NORMAL; `LDL 190` is HIGH-side only.
 
-### 6.5.7 — Normalization: new synonyms & units — OWNER: Rohit (~1.5h)
+### 6.5.7 - Assessment policy + coverage - OWNER: Rohit core + Claude tests (~2.5h)
 
-**What:** grow the normalization maps for all Tier-A tests (SGPT↔ALT,
-SGOT↔AST, name variants, unit spellings). **Why:** reports name the same test
-many ways; the engine must canonicalize before lookup. **Steps:** add entries
-to the synonym/unit data; keep it data-driven (no logic change). **Done when:**
-"SGPT", "ALT", "Alanine Aminotransferase" all normalize to one canonical name
-matching the KB key.
+Introduce a MINIMAL `AssessmentPolicy` (data, keyed by canonical name ->
+`{assessable, classification, tier}`), SEPARATE from the medical KB, plus a
+`CoverageResult { assessed, acknowledged, unparsed }` schema. Gate the engine:
+assess only `assessable` tests; route the rest to `acknowledged` with their
+`classification` (sensitive | numeric); acknowledged tests NEVER touch urgency.
+This is the guard that stops a parsed `PSA < 4.0` line from ever getting a
+severity. **Done when:** Hemoglobin (assessed) + PSA (acknowledged-sensitive) +
+an unknown numeric (acknowledged-numeric) -> one graded finding, two
+acknowledged, urgency from Hemoglobin only.
 
-### 6.5.8 — Author the sourced reference-range KB — OWNER: Rohit, content (~4h+)
+### 6.5.8 - Author the first-wave reference-range KB - OWNER: Rohit, content (~4h)
 
-**What:** `reference_ranges/*.json` for every Tier-A panel — real, cited
-ranges and (where relevant) critical thresholds, sex-aware where needed.
-**Why:** this is the medical backbone; the engine is only as correct as these
-numbers. **Steps:** one JSON file per panel; every entry carries a mandatory
-`source` (#019) — no "STARTER VALUE" this time; sex variants for
-Hemoglobin/Creatinine/Ferritin/etc. **Safety/scale note:** validated at load.
-**Done when:** all files load and validate; no placeholder sources.
+`reference_ranges/` for Lipids, Glucose/HbA1c, Thyroid, KFT - cited, sex-aware
+where needed (Creatinine, Uric Acid), one-sided where needed. Every `source`
+real (#019). **Done when:** files load + validate, no placeholders.
 
-### 6.5.9 — Author the sourced explanation KB (for RAG) — OWNER: Rohit, content (~4h+)
+### 6.5.9 - Author the first-wave explanation KB - OWNER: Rohit, content (~4h)
 
-**What:** `test_knowledge/*.json` (the RAG "book") for the Tier-A tests — what
-each measures, what low/high can indicate, a dietary note, a specialist, each
-cited. **Why:** so the AI can *ground* explanations for the new tests.
-**Safety/scale note:** **zero RAG code changes** — the "KB-as-data scales"
-promise from Sprint 6 (#028) being cashed in. **Done when:** the index builds
-over the enlarged KB and a lipid/thyroid query retrieves the right sourced
-snippet.
+`test_knowledge/` for the same first-wave tests (measures / low / high / diet /
+specialist, each cited). Zero RAG code change (#028). **Done when:** the index
+builds and a lipid/thyroid query retrieves the right sourced snippet.
 
-### 6.5.10 — Fixtures + end-to-end integration test — OWNER: pair (~2h)
+### 6.5.10 - KB integrity checks - OWNER: pair (~2h)  [NEW, from review]
 
-**What:** a synthetic full-body checkup fixture (a male and a female variant,
-including an out-of-scope test to prove acknowledgment), driven end to end.
-**Why:** proves the whole pipeline on a realistic multi-panel report. **Done
-when:** a synthetic full-panel report → a correct, grounded verdict, both
-sexes, with out-of-scope tests acknowledged not graded.
+Extend load-time validation beyond per-entry schema: duplicate canonical names
+across panels, unit consistency between a test's range + knowledge entries,
+impossible critical thresholds (critical inside the normal range / low >= high),
+and orphans (a policy-assessable test missing a range or knowledge entry, or a
+KB entry with no policy row). Run as a test (and later in CI). **Done when:** a
+deliberately-broken KB entry fails the check with a clear message.
 
-### 6.5.11 — Tests throughout — OWNER: split (~3h)
+### 6.5.11 - Fixtures + end-to-end integration - OWNER: pair (~2h)
 
-Happy paths (Rohit): parser one-sided cases, sex extraction, sex-aware
-resolution, new-panel banding, allowlist assessment. Adversarial (Claude):
-one-sided banding never invents a direction; UNKNOWN-sex fallback; a Tier-C
-test in a report is acknowledged, NEVER graded, and never touches urgency;
-parser still rejects noise; #006 boundary test still holds. **Done when:** fast
-suite green, offline.
+Synthetic full-wave report (male + female, including an out-of-scope test to
+prove acknowledgment) -> correct grounded verdict end to end. **Done when:** the
+pipeline flags the right tests with the right severities; out-of-scope
+acknowledged not graded.
 
-### 6.5.12 — Sprint close — OWNER: Rohit (~1h)
+### 6.5.12 - Tests throughout - OWNER: split (~3h)
 
-Log decisions (#029 scope tiers + acknowledge-don't-skip; sex-aware resolution;
-one-sided banding rule); update roadmap (Sprint 6.5 ✅), architecture banner,
-reflections, README, `project-status.md`; confirm CI green.
+Happy (Rohit): parser one-sided, sex extraction, normalization, sex-aware
+resolution, banding, allowlist. Adversarial (Claude): no invented direction;
+UNKNOWN-sex union; Tier-C acknowledged never graded / never in urgency; KB
+integrity catches breakage; #006 boundary holds. **Done when:** fast suite
+green + offline.
+
+### 6.5.13 - Sprint close - OWNER: Rohit (~1h)
+
+Log #029 (scope tiers + acknowledge) and #030 (review refinements); update
+roadmap (6.5 done), architecture, reflections, README, project-status; CI green.
 
 ---
 
@@ -400,18 +375,49 @@ flagged unreadable.
 
 ---
 
-## Open questions to confirm before coding (6.5.1)
+## Decisions locked (6.5.1) — to be logged with #029
 
-1. **Sex-unknown fallback:** union-of-both-ranges (fewer false alarms, my
-   recommended default) vs narrower-intersection (flags more, "over-warn is
-   safe")? We pick one and log it.
-2. **Sensitive-test wording (mostly decided):** Rohit's requirement settles
-   "don't skip" — confirm the *sensitive* category is shown as "present — needs
-   a doctor's interpretation, not assessed" WITHOUT any in/out-of-range verdict
-   (my recommendation), while *numeric/unknown* tests may show the report's own
-   range neutrally.
-3. **RC1 panel cut:** ship ALL Tier-A panels at once, or a first wave
-   (lipids + glucose/HbA1c + thyroid + KFT) with the rest a fast follow?
+1. **Sex-unknown fallback = UNION of both sexes' ranges.** When a sex-dependent
+   test has no printed range and the patient's sex is unknown, use the widest
+   normal band (both sexes combined) and flag reduced confidence — we don't
+   raise a false alarm, and we still give the user an answer. (Rare in practice:
+   most reports print their own range, which is trusted first.)
+2. **Unassessed tests = SPLIT by sensitivity.** *Sensitive* (tumor / serology /
+   hormone) is shown as "present — needs a doctor's interpretation, not
+   assessed," with NO in/out-of-range verdict. *Numeric / unknown* shows the
+   report's own printed range neutrally, "not clinically graded by MediScan."
+3. **RC1 ships a FIRST WAVE, then expands.** First wave = **Lipids +
+   Glucose/HbA1c + Thyroid + KFT**. The remaining Tier-A panels (LFT,
+   electrolytes/minerals, iron studies, vitamins, CBC-extend, urine ACR) follow
+   immediately after — same machinery, data-only. This validates the
+   sex-aware/one-sided engine on a smaller sourced set first.
+
+---
+
+## Refinements adopted from Rohit's review (to log as #030)
+
+Rohit's architecture review of this plan. Adopted into the tasks above:
+1. **Policy != knowledge.** A minimal `AssessmentPolicy` (assessable /
+   classification / tier), separate from the KB, lands in RC1 - because the
+   "split by sensitivity" behavior needs a home that ISN'T the medical facts.
+   Full policy object = RC2.
+2. **`PatientContext` gets its own module** - it will grow.
+3. **Parser:** extract range-parsing into its own testable function now; the
+   full composable-recognizer refactor is **Sprint 7**, not now.
+4. **`CoverageResult`** becomes an explicit schema, not three loose lists.
+5. **KB integrity checks** (new task 6.5.10): duplicate canonical names, unit
+   consistency, impossible criticals, orphan entries.
+6. **Order:** normalization moves BEFORE resolution/severity.
+
+Deferred (revisit triggers, not built now):
+- Panel-first KB folder layout (`knowledge_base/lipid/...`) once the KB reaches
+  hundreds of entries - **[OPEN: Rohit to decide reorg-now vs later]**.
+- Full `AssessmentPolicy` object model - RC2.
+- Composable parser recognizers - Sprint 7.
+
+Foundations Rohit flagged as solid and we will NOT touch: report-first ranges,
+deterministic engine, RAG architecture, severity/urgency algorithms, provider &
+PromptTemplate abstractions.
 
 ---
 
