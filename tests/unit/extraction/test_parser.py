@@ -171,3 +171,34 @@ def test_percent_unit_line_with_percent_in_range():
     r = parse_lab_text("Glycohemoglobin 5.4 % < 5.7 %").results[0]
     assert r.unit == "%"
     assert r.reference_range.high == 5.7
+
+
+# ---------- names with digits / hyphens (Sprint 6.5) ----------
+
+
+def test_name_with_digits_parses():
+    # HbA1c and Free T3 contain digits — the name pattern must allow them.
+    r = parse_lab_text("HbA1c 5.4 % < 5.7").results[0]
+    assert r.test_name == "HbA1c"
+    assert r.value == 5.4
+    assert r.reference_range.high == 5.7
+
+    r2 = parse_lab_text("Free T3 2.8 pg/mL 2.0 - 4.4").results[0]
+    assert r2.test_name == "Free T3"
+    assert r2.reference_range.low == 2.0
+    assert r2.reference_range.high == 4.4
+
+
+def test_hyphenated_name_parses():
+    r = parse_lab_text("Non-HDL Cholesterol 145 mg/dL < 130 H").results[0]
+    assert r.test_name == "Non-HDL Cholesterol"
+    assert r.reference_range.high == 130.0
+    assert r.flag_in_report == "H"
+
+
+def test_numeric_header_still_unparsed():
+    # widening names to allow digits must NOT start matching page headers:
+    # "Page 1 of 2" has no valid value+unit+range, so it stays unparsed.
+    outcome = parse_lab_text("Page 1 of 2")
+    assert outcome.results == []
+    assert outcome.unparsed_lines == ["Page 1 of 2"]

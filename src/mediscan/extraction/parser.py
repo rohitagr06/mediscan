@@ -55,7 +55,13 @@ _TWO_SIDED_RE = re.compile(rf"^(?P<low>{_NUMBER})\s*-\s*(?P<high>{_NUMBER})$")
 # earns its speed by being simple and fast.
 _LAB_LINE = re.compile(
     r"^\s*"  # start, optional leading spaces
-    r"(?P<name>[A-Za-z][A-Za-z ]+?)"  # NAME: starts with a letter, letters+spaces, lazy
+    # NAME: a letter first, then letters/digits/spaces/hyphens, matched LAZILY.
+    # Digits + hyphens let real test names through (HbA1c, Free T3, Non-HDL).
+    # This stays unambiguous because VALUE must be preceded by whitespace: a
+    # name has no internal spaces before its number, so "HbA1c 5.4" splits at
+    # the space, never inside "HbA1c". Lazy (+?) stops at the first split where
+    # a full "value unit range" follows.
+    r"(?P<name>[A-Za-z][A-Za-z0-9 -]+?)"
     r"\s+"  # gap
     rf"(?P<value>{_NUMBER})"  # VALUE: integer or decimal
     r"\s+"
