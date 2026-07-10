@@ -39,5 +39,129 @@
     "low": 83.0,
     "high": 101.0,
     "source": "Example Clinical Laboratory, Adult Reference Intervals"
+  },
+  {
+    "test_name": "RBC Count",
+    "unit": "10^6/uL",
+    "male": {
+      "low": 4.5,
+      "high": 5.5
+    },
+    "female": {
+      "low": 3.8,
+      "high": 4.8
+    },
+    "source": "Common adult sex-specific reference interval (male values per Tata 1mg report)"
+  },
+  {
+    "test_name": "MCH",
+    "unit": "pg",
+    "low": 27.0,
+    "high": 32.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "MCHC",
+    "unit": "g/dL",
+    "low": 31.5,
+    "high": 34.5,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "RDW-CV",
+    "unit": "%",
+    "low": 11.6,
+    "high": 14.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Neutrophils",
+    "unit": "%",
+    "low": 40.0,
+    "high": 80.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Lymphocytes",
+    "unit": "%",
+    "low": 20.0,
+    "high": 40.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Monocytes",
+    "unit": "%",
+    "low": 2.0,
+    "high": 10.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Eosinophils",
+    "unit": "%",
+    "low": 1.0,
+    "high": 6.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Basophils",
+    "unit": "%",
+    "low": 0.0,
+    "high": 2.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Absolute Neutrophil Count",
+    "unit": "10^3/uL",
+    "low": 2.0,
+    "high": 7.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Absolute Lymphocyte Count",
+    "unit": "10^3/uL",
+    "low": 1.0,
+    "high": 3.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Absolute Monocyte Count",
+    "unit": "10^3/uL",
+    "low": 0.2,
+    "high": 1.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Absolute Eosinophil Count",
+    "unit": "10^3/uL",
+    "low": 0.02,
+    "high": 0.5,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Absolute Basophil Count",
+    "unit": "10^3/uL",
+    "low": 0.02,
+    "high": 0.1,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "MPV",
+    "unit": "fL",
+    "low": 6.5,
+    "high": 12.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "PDW",
+    "unit": "fL",
+    "low": 9.0,
+    "high": 17.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "ESR",
+    "unit": "mm/hr",
+    "high": 10.0,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
   }
 ]

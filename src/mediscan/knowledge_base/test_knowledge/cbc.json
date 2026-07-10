@@ -1,47 +1,187 @@
 [
-    {
-      "test_name": "Hemoglobin",
-      "what_it_measures": "the amount of hemoglobin, an iron-rich protein in red blood cells that carries oxygen from the lungs to the rest of the body",
-      "low_meaning": "low hemoglobin commonly suggests anemia, although other blood disorders or medical conditions can also contribute",
-      "high_meaning": "high hemoglobin may occur with dehydration or conditions that increase red blood cell production; smoking and living at high altitude can also contribute",
-      "dietary_note": "if iron deficiency is the cause of low hemoglobin, iron-rich foods together with vitamin C may help improve iron absorption; dietary changes should be based on the underlying cause",
-      "specialist": "Hematologist",
-      "source": "MedlinePlus Medical Test: Hemoglobin Test (Updated Oct 27, 2024)"
-    },
-    {
-      "test_name": "Total Leukocyte Count",
-      "what_it_measures": "the total number of white blood cells, which help the body fight infection and respond to inflammation",
-      "low_meaning": "a low white blood cell count may be associated with certain viral infections, medications, autoimmune disorders, or bone marrow conditions",
-      "high_meaning": "a high white blood cell count may suggest infection, inflammation, physical stress, or, less commonly, certain blood disorders",
-      "dietary_note": "no specific food reliably changes the white blood cell count; a balanced diet supports overall immune health",
-      "specialist": "Hematologist",
-      "source": "MedlinePlus: Complete Blood Count (CBC) / CBC Blood Test (Updated Oct 2024)"
-    },
-    {
-      "test_name": "Platelet Count",
-      "what_it_measures": "the number of platelets, the blood cell fragments that help form clots and reduce bleeding",
-      "low_meaning": "a low platelet count may increase the risk of bruising or bleeding and can have many possible causes",
-      "high_meaning": "a high platelet count may occur in response to infection, inflammation, iron deficiency, or, less commonly, bone marrow disorders",
-      "dietary_note": "there is no specific diet proven to directly raise or lower platelet counts; maintaining good overall nutrition is generally recommended",
-      "specialist": "Hematologist",
-      "source": "MedlinePlus: Complete Blood Count (CBC) / Blood Count Tests (Updated Oct 2024)"
-    },
-    {
-      "test_name": "Hematocrit",
-      "what_it_measures": "the percentage of your blood volume made up of red blood cells",
-      "low_meaning": "a low hematocrit may indicate anemia, blood loss, or other conditions affecting red blood cells",
-      "high_meaning": "a high hematocrit may occur with dehydration or conditions that increase red blood cell production",
-      "dietary_note": "adequate hydration is important, and if anemia is due to iron deficiency, iron-rich foods may be recommended",
-      "specialist": "Hematologist",
-      "source": "MedlinePlus Medical Test: Hematocrit Test (Updated Nov 25, 2024)"
-    },
-    {
-      "test_name": "MCV",
-      "what_it_measures": "the average size of your red blood cells (Mean Corpuscular Volume)",
-      "low_meaning": "a low MCV means red blood cells are smaller than average and is commonly seen with iron deficiency anemia or certain inherited blood disorders",
-      "high_meaning": "a high MCV means red blood cells are larger than average and may be associated with vitamin B12 deficiency, folate deficiency, liver disease, alcohol use, or certain medications",
-      "dietary_note": "when nutritional deficiency is the cause, iron, vitamin B12, or folate intake may be important depending on the underlying diagnosis",
-      "specialist": "Hematologist",
-      "source": "MedlinePlus: Complete Blood Count (CBC) and CBC Blood Test (Updated Oct 2024)"
-    }
-  ]
+  {
+    "test_name": "Hemoglobin",
+    "what_it_measures": "the amount of hemoglobin, an iron-rich protein in red blood cells that carries oxygen",
+    "low_meaning": "low hemoglobin commonly suggests anemia",
+    "high_meaning": "high hemoglobin may occur with dehydration",
+    "dietary_note": "iron-rich foods with vitamin C may help",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus Hemoglobin Test (Oct 27, 2024)"
+  },
+  {
+    "test_name": "Total Leukocyte Count",
+    "what_it_measures": "the total number of white blood cells",
+    "low_meaning": "may be associated with some infections or medications",
+    "high_meaning": "may suggest infection or inflammation",
+    "dietary_note": "a balanced diet supports immune health",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus CBC (Oct 2024)"
+  },
+  {
+    "test_name": "Platelet Count",
+    "what_it_measures": "the number of platelets that help form clots",
+    "low_meaning": "may increase bruising or bleeding risk",
+    "high_meaning": "may occur with infection, inflammation, or iron deficiency",
+    "dietary_note": "good overall nutrition is generally recommended",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus CBC (Oct 2024)"
+  },
+  {
+    "test_name": "Hematocrit",
+    "what_it_measures": "the percentage of blood volume made up of red blood cells",
+    "low_meaning": "may indicate anemia or blood loss",
+    "high_meaning": "may occur with dehydration",
+    "dietary_note": "adequate hydration is important",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus Hematocrit Test (Nov 25, 2024)"
+  },
+  {
+    "test_name": "MCV",
+    "what_it_measures": "the average size of your red blood cells",
+    "low_meaning": "smaller cells, often iron deficiency anemia",
+    "high_meaning": "larger cells, may relate to B12/folate deficiency or liver/alcohol causes",
+    "dietary_note": "iron, B12, or folate may matter depending on the cause",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus CBC (Oct 2024)"
+  },
+  {
+    "test_name": "RBC Count",
+    "what_it_measures": "the number of red blood cells, which carry oxygen, in a volume of blood",
+    "low_meaning": "a low RBC count can be associated with anaemia or blood loss",
+    "high_meaning": "a high RBC count can be associated with dehydration or conditions that increase red-cell production",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: RBC Count",
+    "dietary_note": "iron, vitamin B12 and folate are commonly discussed for healthy red-cell production"
+  },
+  {
+    "test_name": "MCH",
+    "what_it_measures": "the average amount of haemoglobin in a single red blood cell",
+    "low_meaning": "a low MCH can be associated with iron-deficiency anaemia",
+    "high_meaning": "a high MCH can be associated with vitamin B12 or folate deficiency",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Complete Blood Count (CBC)",
+    "dietary_note": "iron, B12 and folate-rich foods are commonly discussed for red-cell health"
+  },
+  {
+    "test_name": "MCHC",
+    "what_it_measures": "the average concentration of haemoglobin in a given volume of red blood cells",
+    "low_meaning": "a low MCHC can be associated with iron-deficiency anaemia",
+    "high_meaning": "a high MCHC is uncommon and can be seen in certain inherited red-cell conditions",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Complete Blood Count (CBC)",
+    "dietary_note": "iron-rich foods are commonly discussed for low MCHC"
+  },
+  {
+    "test_name": "RDW-CV",
+    "what_it_measures": "the variation in size of red blood cells (red-cell distribution width)",
+    "low_meaning": "a low RDW is generally not a concern",
+    "high_meaning": "a high RDW can be associated with mixed or evolving anaemias, where red cells vary more in size",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Complete Blood Count (CBC)",
+    "dietary_note": "the dietary measures discussed for anaemia apply here"
+  },
+  {
+    "test_name": "Neutrophils",
+    "what_it_measures": "the percentage of neutrophils, white cells that fight bacterial infection, among white blood cells",
+    "low_meaning": "a low neutrophil percentage can be associated with some viral infections or bone-marrow effects",
+    "high_meaning": "a high neutrophil percentage can be associated with bacterial infection, inflammation or physical stress",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Lymphocytes",
+    "what_it_measures": "the percentage of lymphocytes, white cells central to the immune response, among white blood cells",
+    "low_meaning": "a low lymphocyte percentage can be associated with some infections or immune conditions",
+    "high_meaning": "a high lymphocyte percentage can be associated with viral infections",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Monocytes",
+    "what_it_measures": "the percentage of monocytes, white cells that clear debris and support immunity, among white blood cells",
+    "low_meaning": "a low monocyte percentage is usually not a concern",
+    "high_meaning": "a high monocyte percentage can be associated with chronic infection or inflammation",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Eosinophils",
+    "what_it_measures": "the percentage of eosinophils, white cells involved in allergy and parasite response, among white blood cells",
+    "low_meaning": "a low eosinophil percentage is usually not a concern",
+    "high_meaning": "a high eosinophil percentage can be associated with allergies, asthma or parasitic infection",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Basophils",
+    "what_it_measures": "the percentage of basophils, white cells involved in allergic and inflammatory responses, among white blood cells",
+    "low_meaning": "a low basophil percentage is usually not a concern",
+    "high_meaning": "a high basophil percentage is uncommon and can accompany certain allergic or bone-marrow conditions",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Absolute Neutrophil Count",
+    "what_it_measures": "the actual number of neutrophils in a volume of blood",
+    "low_meaning": "a low absolute neutrophil count (neutropenia) can be associated with a higher risk of infection",
+    "high_meaning": "a high absolute neutrophil count can be associated with infection, inflammation or stress",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Absolute Lymphocyte Count",
+    "what_it_measures": "the actual number of lymphocytes in a volume of blood",
+    "low_meaning": "a low absolute lymphocyte count can be associated with some infections or immune conditions",
+    "high_meaning": "a high absolute lymphocyte count can be associated with viral infections",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Absolute Monocyte Count",
+    "what_it_measures": "the actual number of monocytes in a volume of blood",
+    "low_meaning": "a low absolute monocyte count is usually not a concern",
+    "high_meaning": "a high absolute monocyte count can be associated with chronic infection or inflammation",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Absolute Eosinophil Count",
+    "what_it_measures": "the actual number of eosinophils in a volume of blood",
+    "low_meaning": "a low absolute eosinophil count is usually not a concern",
+    "high_meaning": "a high absolute eosinophil count can be associated with allergies or parasitic infection",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "Absolute Basophil Count",
+    "what_it_measures": "the actual number of basophils in a volume of blood",
+    "low_meaning": "a low absolute basophil count is usually not a concern",
+    "high_meaning": "a high absolute basophil count is uncommon and can accompany certain conditions",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Blood Differential Test"
+  },
+  {
+    "test_name": "MPV",
+    "what_it_measures": "mean platelet volume — the average size of platelets, which help blood clot",
+    "low_meaning": "a low MPV can accompany certain bone-marrow conditions",
+    "high_meaning": "a high MPV can indicate younger, larger platelets and can accompany higher platelet turnover",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Complete Blood Count (CBC)"
+  },
+  {
+    "test_name": "PDW",
+    "what_it_measures": "platelet distribution width — the variation in platelet size",
+    "low_meaning": "a low PDW is generally not a concern",
+    "high_meaning": "a high PDW indicates more variation in platelet size and can accompany platelet disorders",
+    "specialist": "Hematologist",
+    "source": "MedlinePlus: Complete Blood Count (CBC)"
+  },
+  {
+    "test_name": "ESR",
+    "what_it_measures": "erythrocyte sedimentation rate — how quickly red cells settle, a general marker of inflammation",
+    "low_meaning": "a low ESR is generally not a concern",
+    "high_meaning": "a high ESR can be associated with inflammation or infection but is non-specific",
+    "specialist": "General Physician",
+    "source": "MedlinePlus: Sed Rate (Erythrocyte Sedimentation Rate)"
+  }
+]
