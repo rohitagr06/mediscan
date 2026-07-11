@@ -16,8 +16,11 @@ from mediscan.ai.base import LLMClient
 from mediscan.ai.exceptions import AllProvidersFailed, LLMError
 from mediscan.ai.structured import generate_structured
 from mediscan.config import settings
+from mediscan.observability import get_logger
 from mediscan.schemas import LLMRequest
 from mediscan.schemas.base import MediScanModel
+
+log = get_logger(__name__)
 
 
 class ChainResult(NamedTuple):
@@ -57,8 +60,17 @@ def generate_with_fallback(
                 # it for debugging. Back off and retry the SAME provider; if
                 # it's the last attempt, fall through to the next provider.
                 last_error = err
+                # Observability: record the provider + attempt + error TYPE
+                # (never the request or any response text — no PHI in logs).
+                log.warning(
+                    "provider attempt failed: provider=%s attempt=%d error=%s",
+                    provider.provider_name,
+                    attempt,
+                    type(err).__name__,
+                )
                 if attempt < settings.llm_max_retries:
                     sleep(2**attempt)  # 1s, 2s, 4s, ...
 
     # Chain the last underlying failure (429/timeout/validation) as the cause.
+    log.error("all AI providers failed after %d provider(s)", len(providers))
     raise AllProvidersFailed("all AI providers failed") from last_error

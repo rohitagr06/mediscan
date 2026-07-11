@@ -65,6 +65,8 @@ class PromptTemplate:
 
 
 class PatientSummaryPrompt(PromptTemplate):
+    """Plain-language summary of the findings, written for the patient."""
+
     name = "patient_summary"
     version = 1
     output_schema = PatientSummary
@@ -77,6 +79,8 @@ class PatientSummaryPrompt(PromptTemplate):
 
 
 class DoctorSummaryPrompt(PromptTemplate):
+    """Concise clinical summary of the findings, written for a physician."""
+
     name = "doctor_summary"
     version = 1
     output_schema = DoctorSummary
@@ -90,8 +94,12 @@ class DoctorSummaryPrompt(PromptTemplate):
 
 
 class DietPrompt(PromptTemplate):
-    # Produces a LIST of items; each item is validated against output_schema
-    # in task 5.4. Dietary content is informational only (schema enforces it).
+    """General, informational dietary/lifestyle considerations (never advice).
+
+    Produces a LIST of items; each item is validated against output_schema in
+    task 5.4. Dietary content is informational only (the schema enforces it).
+    """
+
     name = "dietary"
     version = 1
     output_schema = DietaryConsideration
@@ -105,6 +113,8 @@ class DietPrompt(PromptTemplate):
 
 
 class SpecialistPrompt(PromptTemplate):
+    """Categories of specialist the patient could consider, each with a reason."""
+
     name = "specialist"
     version = 1
     output_schema = SpecialistSuggestion

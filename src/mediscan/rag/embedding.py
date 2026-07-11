@@ -54,6 +54,13 @@ class FakeEmbeddingFunction(EmbeddingFunction):
         pass
 
     def __call__(self, input: Documents) -> Embeddings:
+        """Turn each text into a fixed-length word-count vector.
+
+        For every text we make a zero vector of length _DIM and, for each
+        word, bump one slot chosen by a stable hash of that word. Texts that
+        share words land in the same slots, so they end up "close" — enough to
+        exercise the index mechanics without a real model.
+        """
         vectors: list[list[float]] = []
         for text in input:
             vec = [0.0] * self._DIM
@@ -67,11 +74,14 @@ class FakeEmbeddingFunction(EmbeddingFunction):
 
     @staticmethod
     def name() -> str:
+        """ChromaDB identifies embedding functions by name; ours is "fake"."""
         return "fake"
 
     def get_config(self) -> dict:
+        """No configuration to serialize — the fake has no tunable state."""
         return {}
 
     @staticmethod
     def build_from_config(config: dict) -> "EmbeddingFunction":
+        """Rebuild from config (ChromaDB's contract); ignored — always the same."""
         return FakeEmbeddingFunction()

@@ -15,6 +15,10 @@ WHY THIS FILE EXISTS
 import re
 from typing import NamedTuple
 
+from mediscan.observability import get_logger
+
+log = get_logger(__name__)
+
 
 class GuardrailResult(NamedTuple):
     """The outcome of one guardrail check.
@@ -69,5 +73,8 @@ def check(text: str) -> GuardrailResult:
     """
     for category, pattern in _FORBIDDEN:
         if pattern.search(text):
+            # Log the EVENT for observability — the category only, never the
+            # offending text (no PHI / no model output in logs, #010/#026).
+            log.warning("guardrail blocked AI output: category=%s", category)
             return GuardrailResult(passed=False, category=category)
     return GuardrailResult(passed=True)
