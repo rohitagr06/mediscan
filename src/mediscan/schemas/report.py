@@ -18,6 +18,7 @@ from pydantic import Field
 
 from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.confidence import ConfidenceBreakdown, ProcessingMetadata
+from mediscan.schemas.coverage import CoverageResult
 from mediscan.schemas.labs import LabResult
 from mediscan.schemas.summaries import (
     DietaryConsideration,
@@ -41,7 +42,14 @@ class AnalysisReport(MediScanModel):
 
     lab_results: list[LabResult] = Field(
         default_factory=list,
-        description="All lab rows extracted from the document.",
+        description="All lab rows extracted from the document (raw audit rows).",
+    )
+    # The Sprint-6.5 coverage split carried into the final report: which tests
+    # were ASSESSED (graded), ACKNOWLEDGED (shown, not graded — out-of-scope or
+    # sensitive), and which lines were unparsed. None until coverage runs.
+    coverage: CoverageResult | None = Field(
+        default=None,
+        description="Assessed/acknowledged/unparsed coverage split (#030).",
     )
     urgency: UrgencyAssessment | None = Field(
         default=None,
