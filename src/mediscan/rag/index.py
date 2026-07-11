@@ -154,7 +154,8 @@ def build_persistent_index(embedding_function, *, cache_dir: str | Path | None =
     populated, persisted, and older hash directories are pruned.
 
     A corrupt or version-incompatible cache directory must never break startup:
-    on any load error we delete that directory and rebuild from scratch.
+    on any load error we clear ChromaDB's in-process cache, delete that
+    directory, and rebuild from scratch.
     """
     import chromadb
 
@@ -162,7 +163,7 @@ def build_persistent_index(embedding_function, *, cache_dir: str | Path | None =
     kb_hash = _hash_kb()
     index_dir = cache_root / kb_hash
 
-    try:
+    def _open_and_maybe_build():
         client = chromadb.PersistentClient(path=str(index_dir))
         collection = client.get_or_create_collection(
             name=_COLLECTION_NAME, embedding_function=embedding_function
@@ -171,14 +172,30 @@ def build_persistent_index(embedding_function, *, cache_dir: str | Path | None =
             _populate(collection)
             _prune_stale_indexes(cache_root, keep=kb_hash)
         return collection
+
+    try:
+        return _open_and_maybe_build()
     except Exception:  # noqa: BLE001 - a bad cache must degrade to a rebuild
+        # A failed open leaves a BROKEN system cached in-process keyed by this
+        # path; a naive retry would reuse it ("no attribute 'bindings'"). Clear
+        # that cache AND delete the dir so the rebuild starts truly clean.
+        _reset_chroma_system_cache()
         shutil.rmtree(index_dir, ignore_errors=True)
-        client = chromadb.PersistentClient(path=str(index_dir))
-        collection = client.get_or_create_collection(
-            name=_COLLECTION_NAME, embedding_function=embedding_function
-        )
-        _populate(collection)
-        return collection
+        return _open_and_maybe_build()
+
+
+def _reset_chroma_system_cache() -> None:
+    """Clear ChromaDB's in-process per-path system cache (recovery helper).
+
+    Best-effort and version-tolerant: if the internal API moves, we no-op
+    rather than turn a recoverable cache problem into a crash.
+    """
+    try:
+        from chromadb.api.shared_system_client import SharedSystemClient
+
+        SharedSystemClient.clear_system_cache()
+    except Exception:  # noqa: BLE001, S110 - internal API drift stays non-fatal
+        pass
 
 
 @cache
