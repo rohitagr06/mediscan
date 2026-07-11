@@ -11,6 +11,18 @@ WHY THIS FILE EXISTS
     noisy, or partially recognized OCR output never crashes the parser
     and is never silently discarded.
 
+SHAPE OF THE CODE (Sprint 7.8 refactor)
+    One anchored regex (`_LAB_LINE`) TOKENIZES a line into raw fields; small,
+    independently-testable RECOGNIZERS then interpret each field:
+      - parse_reference_range  — the range token -> ReferenceRange
+      - _recognize_name        — the name cell   -> a clean name (or reject)
+      - _recognize_flag        — pre/post flag    -> H/L/HH/LL/* (or None)
+      - _recognize_number      — strip thousands commas
+    `_recognize_row` composes them into a LabResult (or None), and
+    parse_lab_text is then just a tolerant loop. Same behaviour as before the
+    split — the regex and every rule are unchanged; only the one big function
+    was decomposed so each recognizer can be tested in isolation (#033).
+
 SCOPE (decisions #018, #027)
     A row is recognized only when it has a POSITIVE reference range,
     either:
@@ -122,10 +134,8 @@ def _safe_reference_range(low: str | None, high: str | None) -> ReferenceRange |
 def parse_reference_range(token: str) -> ReferenceRange | None:
     """Turn a reference-range token into a ReferenceRange, or None if unrecognized.
 
-    Handles two-sided ("13.0 - 17.0") and one-sided ("< 100", ">= 40",
-    "< 5.7 %") ranges. Kept as its own small function so the range logic is
-    isolated and directly testable — the seed of a future recognizer split
-    (Sprint 7), without adding that framework now.
+    The RANGE recognizer. Handles two-sided ("13.0 - 17.0") and one-sided
+    ("< 100", ">= 40", "< 5.7 %") ranges.
 
     One-sided meaning:
       "< N" / "<= N"  -> normal is BELOW N, so N is the UPPER limit (high = N).
@@ -151,79 +161,99 @@ def parse_reference_range(token: str) -> ReferenceRange | None:
     return None
 
 
+# --- field recognizers (small + independently testable) --------------------
+
+
+def _recognize_number(raw: str) -> str:
+    """Strip thousands separators so a number coerces cleanly ("10,800"->"10800")."""
+    return raw.replace(",", "")
+
+
+def _recognize_name(raw_name: str) -> str | None:
+    """The NAME recognizer: the clean test name, or None if it isn't one.
+
+    Column-alignment padding in the source PDF can glue a stray token to the
+    name across a big whitespace gap ("T3, Total          R"). A real name uses
+    single spaces between words, so we keep only the part before the first
+    multi-space gap. A lone leftover character (e.g. a stray "R" from a wrapped
+    header) is never a real test name and is rejected.
+    """
+    name = re.split(r"\s{2,}", raw_name)[0].strip()
+    return name if len(name) >= 2 else None
+
+
+def _recognize_flag(preflag: str | None, tail: str | None) -> str | None:
+    """The FLAG recognizer: a high/low marker, or None.
+
+    A flag may sit BEFORE the value (preflag) or AFTER the range (tail). A
+    trailing token is a flag ONLY when it is exactly H/L/HH/LL/*; anything
+    longer is a Method column ("Cyanide Free SLS") and is ignored — so we never
+    invent a flag from a method name. The pre-value flag takes precedence.
+    """
+    tail_flag = tail.strip() if tail and _FLAG_RE.match(tail.strip()) else None
+    return preflag or tail_flag
+
+
+def _recognize_row(line: str) -> LabResult | None:
+    """Compose the recognizers over one normalized line -> a LabResult, or None.
+
+    Returns None whenever the line isn't a well-formed lab row (too long, no
+    match, a name/range that doesn't resolve, or a schema failure). The caller
+    records those in unparsed_lines — nothing is ever silently dropped.
+    """
+    # A real lab row is short. Skipping absurdly long lines before the regex is
+    # a cheap guard against pathological backtracking on a hostile
+    # all-letters/spaces line (ReDoS hardening); such a line is never a lab row.
+    if len(line) > _MAX_LINE_LENGTH:
+        return None
+
+    match = _LAB_LINE.match(line)
+    if match is None:
+        return None
+
+    name = _recognize_name(match.group("name"))
+    if name is None:
+        return None
+
+    reference_range = parse_reference_range(match.group("range"))
+    if reference_range is None:
+        # matched the row SHAPE but the range didn't resolve (e.g. inverted).
+        return None
+
+    flag = _recognize_flag(match.group("preflag"), match.group("tail"))
+
+    try:
+        return LabResult(
+            test_name=name,
+            value=_recognize_number(match.group("value")),
+            unit=match.group("unit"),
+            reference_range=reference_range,
+            flag_in_report=flag,
+        )
+    except ValidationError:
+        # matched the structure but failed schema validation -> unparsed.
+        return None
+
+
 def parse_lab_text(text: str) -> ParseOutcome:
     """Parse document text into lab results, tolerantly.
 
-    Every line either matches the lab-row shape (-> a LabResult with
-    severity STILL None, because parsing never judges) or is recorded
-    in unparsed_lines. Never raises on bad input — a line that doesn't
-    match is data, not an error.
+    Every non-blank line either becomes a LabResult (severity STILL None —
+    parsing never judges) or is recorded in unparsed_lines. Never raises on
+    bad input: a line that doesn't match is data, not an error.
     """
     results: list[LabResult] = []
     unparsed_lines: list[str] = []
 
     for raw_line in text.splitlines():
         line = raw_line.strip().translate(_DASH_NORMALIZE)
-
         if not line:
             continue
 
-        # A real lab row is short. Skipping absurdly long lines before the
-        # regex is a cheap guard against pathological backtracking on a
-        # hostile all-letters/spaces line (ReDoS hardening); such a line is
-        # never a lab row anyway, so it is recorded as unparsed.
-        if len(line) > _MAX_LINE_LENGTH:
+        result = _recognize_row(line)
+        if result is None:
             unparsed_lines.append(line)
-            continue
-
-        match = _LAB_LINE.match(line)
-
-        if match is None:
-            unparsed_lines.append(line)
-            continue
-
-        # Column-alignment padding in the source PDF can glue a stray token to
-        # the name across a big whitespace gap ("T3, Total          R"). A real
-        # name uses single spaces between words, so keep only the part before
-        # the first multi-space gap.
-        name = re.split(r"\s{2,}", match.group("name"))[0].strip()
-        if len(name) < 2:
-            # A lone character (e.g. a stray "R" left on a value line when a
-            # long header wrapped in the source PDF) is never a real test
-            # name. Reject it rather than emit a bogus one-letter result.
-            unparsed_lines.append(line)
-            continue
-
-        reference_range = parse_reference_range(match.group("range"))
-        if reference_range is None:
-            # The row matched the row SHAPE but the range token didn't resolve
-            # to a valid range (e.g. an inverted two-sided range). Treat as
-            # unparsed rather than terminating the whole parser.
-            unparsed_lines.append(line)
-            continue
-
-        # The flag may sit BEFORE the value (preflag) or AFTER the range
-        # (tail). A trailing token is a flag only when it is exactly H/L/HH/
-        # LL/*; anything longer is a Method column like "Cyanide Free SLS" and
-        # is ignored, so we never invent a flag from a method name.
-        tail = match.group("tail")
-        tail_flag = tail.strip() if tail and _FLAG_RE.match(tail.strip()) else None
-        flag = match.group("preflag") or tail_flag
-
-        try:
-            result = LabResult(
-                test_name=name,
-                value=match.group("value").replace(",", ""),  # strip thousands commas
-                unit=match.group("unit"),
-                reference_range=reference_range,
-                flag_in_report=flag,
-            )
-        except ValidationError:
-            # The row matched the expected structure but failed schema
-            # validation. Treat it as unparsed instead of crashing.
-            unparsed_lines.append(line)
-            continue
-
-        results.append(result)
+        else:
+            results.append(result)
 
     return ParseOutcome(results=results, unparsed_lines=unparsed_lines)
