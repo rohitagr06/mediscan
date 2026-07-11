@@ -9,6 +9,8 @@ WHY THIS FILE EXISTS
     model/prompt). Every output ALWAYS has a value — the report is never blank.
 """
 
+import asyncio
+import functools
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import NamedTuple
@@ -276,6 +278,79 @@ def assemble_report_explanations(
     )
 
 
+def _build_facts(
+    assessments: list[SeverityAssessment],
+    urgency: UrgencyAssessment,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]],
+) -> tuple[str, list[str]]:
+    """Build the grounded FACTS text once, plus the unique source list.
+
+    Shared by the sync and async assemblers so both ground identically.
+    dict.fromkeys keeps first-seen order while dropping duplicate sources.
+    """
+    verdict_facts = _facts_from_verdict(assessments, urgency)
+    snippets = _grounding_snippets(assessments, retrieve_fn)
+    facts = _augment_facts(verdict_facts, snippets)
+    sources = list(dict.fromkeys(snip.source for snip in snippets))
+    return facts, sources
+
+
+class _OutputSpec(NamedTuple):
+    """One of the four report outputs: where it goes + how to build it."""
+
+    attr: str  # the ReportExplanations field this fills
+    prompt: PromptTemplate
+    as_list: bool
+    deterministic: Callable[[], MediScanModel | list[MediScanModel]]
+
+
+def _output_specs(
+    assessments: list[SeverityAssessment], urgency: UrgencyAssessment
+) -> list[_OutputSpec]:
+    """The four outputs to produce — the single definition both paths share."""
+    return [
+        _OutputSpec(
+            "patient",
+            PatientSummaryPrompt(),
+            False,
+            lambda: templates.patient_summary(assessments, urgency),
+        ),
+        _OutputSpec(
+            "doctor",
+            DoctorSummaryPrompt(),
+            False,
+            lambda: templates.doctor_summary(assessments, urgency),
+        ),
+        _OutputSpec(
+            "dietary",
+            DietPrompt(),
+            True,
+            lambda: templates.dietary(assessments, urgency),
+        ),
+        _OutputSpec(
+            "specialist",
+            SpecialistPrompt(),
+            True,
+            lambda: templates.specialist(assessments, urgency),
+        ),
+    ]
+
+
+def _deterministic_explanation(
+    spec: _OutputSpec, now: Callable[[], datetime]
+) -> Explanation:
+    """The deterministic-template Explanation for one output (async fallback)."""
+    return Explanation(
+        content=spec.deterministic(),
+        provenance=ExplanationProvenance(
+            source=ExplanationSource.DETERMINISTIC,
+            prompt_name=spec.prompt.name,
+            prompt_version=spec.prompt.version,
+            timestamp=now(),
+        ),
+    )
+
+
 def explain_report(
     assessments: list[SeverityAssessment],
     urgency: UrgencyAssessment,
@@ -284,50 +359,69 @@ def explain_report(
     now: Callable[[], datetime] = _utcnow,
     retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
 ) -> ReportExplanations:
-    """Produce all four grounded, guardrailed, provenance-tagged outputs."""
-    verdict_facts = _facts_from_verdict(assessments, urgency)
-    snippets = _grounding_snippets(assessments, retrieve_fn)
-    facts = _augment_facts(verdict_facts, snippets)
+    """Produce all four grounded, guardrailed, provenance-tagged outputs (sync)."""
+    facts, sources = _build_facts(assessments, urgency, retrieve_fn)
+    outputs = {
+        spec.attr: _explain(
+            spec.prompt,
+            facts,
+            providers,
+            as_list=spec.as_list,
+            deterministic=spec.deterministic,
+            now=now,
+            grounding_sources=sources,
+        )
+        for spec in _output_specs(assessments, urgency)
+    }
+    return ReportExplanations(**outputs)
 
-    # Unique sources, first-seen order. dict.fromkeys() drops duplicates while
-    # preserving order (a set would scramble it); list() gives back a plain list.
-    sources = list(dict.fromkeys(snip.source for snip in snippets))
 
+async def assemble_report_explanations_async(
+    assessments: list[SeverityAssessment],
+    urgency: UrgencyAssessment,
+    providers: list[LLMClient],
+    *,
+    now: Callable[[], datetime] = _utcnow,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    timeout: float | None = None,
+) -> ReportExplanations:
+    """Async assembly (Sprint 7.6): the four outputs run CONCURRENTLY.
+
+    Each output's (synchronous) AI chain runs in a worker thread via the event
+    loop's default executor, so the four independent generations OVERLAP
+    instead of running one after another. Each is bounded by ``timeout``
+    seconds (default settings.llm_timeout_seconds); a timed-out or crashing
+    output degrades to its deterministic template, handled per-output so one
+    bad output can never sink the others — the report is never blank or blocked.
+
+    NOTE: run_in_executor threads are not force-killed on timeout — the AWAIT is
+    cancelled and we continue with the template; the orphaned call finishes in
+    the background and its result is discarded. Truly cancellable providers (an
+    async SDK) are an RC2 option (#032).
+    """
+    selected = _findings_to_explain(assessments)
+    facts, sources = _build_facts(selected, urgency, retrieve_fn)
+    specs = _output_specs(selected, urgency)
+    limit = settings.llm_timeout_seconds if timeout is None else timeout
+    loop = asyncio.get_running_loop()
+
+    async def run(spec: _OutputSpec) -> Explanation:
+        job = functools.partial(
+            _explain,
+            spec.prompt,
+            facts,
+            providers,
+            as_list=spec.as_list,
+            deterministic=spec.deterministic,
+            now=now,
+            grounding_sources=sources,
+        )
+        try:
+            return await asyncio.wait_for(loop.run_in_executor(None, job), limit)
+        except Exception:  # noqa: BLE001 - any failure/timeout -> safe template
+            return _deterministic_explanation(spec, now)
+
+    results = await asyncio.gather(*(run(spec) for spec in specs))
     return ReportExplanations(
-        patient=_explain(
-            PatientSummaryPrompt(),
-            facts,
-            providers,
-            as_list=False,
-            deterministic=lambda: templates.patient_summary(assessments, urgency),
-            now=now,
-            grounding_sources=sources,
-        ),
-        doctor=_explain(
-            DoctorSummaryPrompt(),
-            facts,
-            providers,
-            as_list=False,
-            deterministic=lambda: templates.doctor_summary(assessments, urgency),
-            now=now,
-            grounding_sources=sources,
-        ),
-        dietary=_explain(
-            DietPrompt(),
-            facts,
-            providers,
-            as_list=True,
-            deterministic=lambda: templates.dietary(assessments, urgency),
-            now=now,
-            grounding_sources=sources,
-        ),
-        specialist=_explain(
-            SpecialistPrompt(),
-            facts,
-            providers,
-            as_list=True,
-            deterministic=lambda: templates.specialist(assessments, urgency),
-            now=now,
-            grounding_sources=sources,
-        ),
+        **{spec.attr: r for spec, r in zip(specs, results, strict=True)}
     )

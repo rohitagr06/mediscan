@@ -22,12 +22,13 @@ THE SAFETY INVARIANT (#006)
     complete.
 """
 
+import asyncio
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from mediscan.ai.explain import assemble_report_explanations
+from mediscan.ai.explain import assemble_report_explanations_async
 from mediscan.confidence import (
     extraction_confidence,
     grounding_confidence,
@@ -85,7 +86,7 @@ def _explanation_signals(explanations) -> tuple[float, int, list[str]]:
     return grounding, fallback_depth, models_used
 
 
-def analyze_text(
+async def analyze_text_async(
     full_text: str,
     *,
     providers: list | None = None,
@@ -94,14 +95,15 @@ def analyze_text(
     ocr_confidence: float = 1.0,
     ocr_engine: str | None = None,
     extraction_method: str = "rules",
+    timeout: float | None = None,
 ) -> AnalysisReport:
-    """Run the medical + AI + confidence pipeline on already-extracted text.
+    """Async core: run the whole pipeline on already-extracted text (Sprint 7.6).
 
-    This is the fully-testable core. Pass ``providers=[]`` (or omit) to run the
-    deterministic-only path — every explanation degrades to a template, no AI
-    call is made. ``retrieve_fn`` is injectable so tests need no vector DB.
-
-    Returns a complete, validated AnalysisReport.
+    The deterministic stages (parse -> coverage -> urgency) are fast and stay
+    synchronous; only the four AI explanation outputs are run CONCURRENTLY, each
+    bounded by ``timeout``. Pass ``providers=[]`` (or omit) for the
+    deterministic-only path — no AI call is made. ``retrieve_fn`` is injectable
+    so tests need no vector DB. Returns a complete, validated AnalysisReport.
     """
     started = time.perf_counter()
     providers = providers if providers is not None else []
@@ -115,8 +117,13 @@ def analyze_text(
     # --- AI explanations (only when there is something graded to explain) --
     explanations = None
     if coverage.assessed:
-        explanations = assemble_report_explanations(
-            coverage.assessed, urgency, providers, now=now, retrieve_fn=retrieve_fn
+        explanations = await assemble_report_explanations_async(
+            coverage.assessed,
+            urgency,
+            providers,
+            now=now,
+            retrieve_fn=retrieve_fn,
+            timeout=timeout,
         )
 
     # --- confidence -------------------------------------------------------
@@ -166,32 +173,52 @@ def analyze_text(
     return report
 
 
-def analyze_document(
-    path: str | Path,
+def analyze_text(
+    full_text: str,
     *,
     providers: list | None = None,
     retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
     now: Callable[[], datetime] = _utcnow,
+    ocr_confidence: float = 1.0,
+    ocr_engine: str | None = None,
+    extraction_method: str = "rules",
+    timeout: float | None = None,
 ) -> AnalysisReport:
-    """Full pipeline from a FILE on disk to an AnalysisReport.
+    """Synchronous wrapper over analyze_text_async (the #7.1 API decision).
 
-    Validates the upload (magic bytes), routes text-PDF vs scan, extracts text
-    with the right engine (PyMuPDF / PaddleOCR), then hands the text to
-    ``analyze_text``. The OCR stack is imported lazily so this module stays
-    importable (and the core stays testable) where those libraries aren't
-    installed.
+    Callers in ordinary sync code get the same one-call convenience; async
+    callers await analyze_text_async directly. asyncio.run spins up a private
+    event loop for this call, so it must NOT be called from inside a running
+    loop (use the async form there).
     """
-    # Lazy imports: keep PyMuPDF/PaddleOCR out of module import so analyze_text
-    # is testable without them.
+    return asyncio.run(
+        analyze_text_async(
+            full_text,
+            providers=providers,
+            retrieve_fn=retrieve_fn,
+            now=now,
+            ocr_confidence=ocr_confidence,
+            ocr_engine=ocr_engine,
+            extraction_method=extraction_method,
+            timeout=timeout,
+        )
+    )
+
+
+def _extract_text_from_document(path: Path) -> tuple[str, float, str]:
+    """Validate, route, and read a file into (full_text, ocr_confidence, engine).
+
+    The OCR stack is imported LAZILY so importing this module (to test the core)
+    never needs PyMuPDF/PaddleOCR. Text PDFs have no OCR step, so their read
+    confidence is a full 1.0.
+    """
     from mediscan.ingestion.storage import SecureUploadDir
     from mediscan.ingestion.validators import validate_upload
     from mediscan.ocr.factory import get_engine_for
     from mediscan.ocr.router import detect_document_type
     from mediscan.schemas import DocumentType
 
-    path = Path(path)
     doc_type = validate_upload(path)  # coarse: PDF -> PDF_TEXT, image -> IMAGE
-
     with SecureUploadDir() as upload_dir:
         stored = upload_dir.store(path)
         # refine PDFs into born-digital text vs a scan needing OCR
@@ -199,13 +226,46 @@ def analyze_document(
             doc_type = detect_document_type(stored)
         extracted = get_engine_for(doc_type).extract(stored)
 
-    # text PDFs have no OCR step -> full confidence in the read.
     ocr_conf = 1.0 if extracted.ocr_confidence is None else extracted.ocr_confidence
-    return analyze_text(
-        extracted.full_text,
+    return extracted.full_text, ocr_conf, extracted.extraction_method
+
+
+async def analyze_document_async(
+    path: str | Path,
+    *,
+    providers: list | None = None,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    now: Callable[[], datetime] = _utcnow,
+    timeout: float | None = None,
+) -> AnalysisReport:
+    """Async: a FILE on disk -> a full AnalysisReport (extract then analyze)."""
+    full_text, ocr_conf, engine = _extract_text_from_document(Path(path))
+    return await analyze_text_async(
+        full_text,
         providers=providers,
         retrieve_fn=retrieve_fn,
         now=now,
         ocr_confidence=ocr_conf,
-        ocr_engine=extracted.extraction_method,
+        ocr_engine=engine,
+        timeout=timeout,
+    )
+
+
+def analyze_document(
+    path: str | Path,
+    *,
+    providers: list | None = None,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    now: Callable[[], datetime] = _utcnow,
+    timeout: float | None = None,
+) -> AnalysisReport:
+    """Synchronous wrapper over analyze_document_async — the file-in entry point."""
+    return asyncio.run(
+        analyze_document_async(
+            path,
+            providers=providers,
+            retrieve_fn=retrieve_fn,
+            now=now,
+            timeout=timeout,
+        )
     )
