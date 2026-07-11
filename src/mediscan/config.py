@@ -111,6 +111,21 @@ class Settings(BaseSettings):
     severity_frac_mild: float = Field(default=0.33, gt=0, lt=1)
     severity_frac_moderate: float = Field(default=0.66, gt=0, lt=1)
 
+    # ---- Confidence scoring (Sprint 7) ----
+    # The overall confidence is a WEIGHTED blend of the four per-stage scores.
+    # Weights must sum to 1.0 (validated below) so `overall` stays in [0, 1].
+    # In config so they can be tuned in Sprint 8's evaluation without code.
+    confidence_weight_ocr: float = Field(default=0.25, ge=0, le=1)
+    confidence_weight_extraction: float = Field(default=0.30, ge=0, le=1)
+    confidence_weight_validation: float = Field(default=0.25, ge=0, le=1)
+    confidence_weight_grounding: float = Field(default=0.20, ge=0, le=1)
+    # After blending, a penalty for how deep the AI fallback chain went:
+    #   overall *= max(floor, 1 - k * fallback_depth)
+    # A run answered by the last rung (or none) is trusted less than one the
+    # primary model answered. Floor stops the penalty from ever zeroing trust.
+    confidence_fallback_k: float = Field(default=0.10, ge=0, le=1)
+    confidence_fallback_floor: float = Field(default=0.5, ge=0, le=1)
+
     @model_validator(mode="after")
     def validate_severity_cutoffs(self) -> "Settings":
         """Reject configurations where the severity bands are out of order.
@@ -131,6 +146,18 @@ class Settings(BaseSettings):
                 "severity_frac_mild must be less than severity_frac_moderate "
                 f"(got {self.severity_frac_mild} >= {self.severity_frac_moderate})"
             )
+
+        # The confidence weights must sum to 1.0, or `overall` could exceed 1
+        # (a >1 confidence is meaningless) or undershoot. Allow a tiny float
+        # tolerance so 0.25+0.30+0.25+0.20 doesn't fail on rounding.
+        weight_sum = (
+            self.confidence_weight_ocr
+            + self.confidence_weight_extraction
+            + self.confidence_weight_validation
+            + self.confidence_weight_grounding
+        )
+        if abs(weight_sum - 1.0) > 1e-6:
+            raise ValueError(f"confidence weights must sum to 1.0 (got {weight_sum})")
         return self
 
 
