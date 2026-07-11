@@ -27,7 +27,12 @@ from mediscan.ai.prompts import (
 from mediscan.config import settings
 from mediscan.rag.retriever import RetrievedSnippet, retrieve
 from mediscan.safety.guardrail import check
-from mediscan.schemas import ExplanationProvenance, ExplanationSource, UrgencyAssessment
+from mediscan.schemas import (
+    ExplanationProvenance,
+    ExplanationSource,
+    Severity,
+    UrgencyAssessment,
+)
 from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.medical import SeverityAssessment
 
@@ -209,6 +214,65 @@ def _explain(
             prompt_version=prompt.version,
             timestamp=now(),
         ),
+    )
+
+
+# Most-severe-first ranking for choosing which findings to explain.
+_SEVERITY_RANK: dict[Severity, int] = {
+    Severity.CRITICAL: 5,
+    Severity.HIGH: 4,
+    Severity.MODERATE: 3,
+    Severity.MILD: 2,
+    Severity.NORMAL: 1,
+}
+
+
+def _severity_rank(assessment: SeverityAssessment) -> int:
+    """Explanation priority for a finding; un-assessable sits mid-high.
+
+    A severity of None means 'un-assessable', which #022 floors at Consult
+    Soon — it deserves attention, so we rank it above MODERATE but below HIGH.
+    """
+    if assessment.severity is None:
+        return 3
+    return _SEVERITY_RANK.get(assessment.severity, 3)
+
+
+def _findings_to_explain(
+    assessments: list[SeverityAssessment],
+) -> list[SeverityAssessment]:
+    """Pick which findings the AI explains: the noteworthy ones, capped.
+
+    Noteworthy = anything NOT normal (abnormal at any severity, or
+    un-assessable). They are sorted most-severe-first and capped at
+    settings.max_explained_findings, so a report with many abnormal results
+    can't explode the prompt. If NOTHING is noteworthy (an all-normal report),
+    the full list is kept so the summary can still reassure ("all normal").
+    """
+    noteworthy = [a for a in assessments if a.severity is not Severity.NORMAL]
+    if not noteworthy:
+        return list(assessments)
+    noteworthy.sort(key=_severity_rank, reverse=True)
+    return noteworthy[: settings.max_explained_findings]
+
+
+def assemble_report_explanations(
+    assessments: list[SeverityAssessment],
+    urgency: UrgencyAssessment,
+    providers: list[LLMClient],
+    *,
+    now: Callable[[], datetime] = _utcnow,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+) -> ReportExplanations:
+    """Report-level explanation assembly (Sprint 7.3) — the orchestrator's entry.
+
+    Selects the noteworthy, most-severe, capped findings (so a huge report
+    stays affordable) and runs them through the existing grounded, guardrailed,
+    provenance-tagged path. `explain_report` stays the low-level engine.
+    """
+    selected = _findings_to_explain(assessments)
+    return explain_report(
+        selected, urgency, providers, now=now, retrieve_fn=retrieve_fn
     )
 
 

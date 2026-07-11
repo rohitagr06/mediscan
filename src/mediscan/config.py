@@ -90,6 +90,11 @@ class Settings(BaseSettings):
     # query can never dump the whole knowledge base into a prompt).
     rag_top_k: int = Field(default=3, ge=1, le=20)
 
+    # Explanation cap (Sprint 7): the most-severe N noteworthy findings that
+    # feed the AI explanation. Bounds token cost — a report with 30 abnormal
+    # results can't explode the prompt. Selection is most-severe-first.
+    max_explained_findings: int = Field(default=12, ge=1, le=100)
+
     # Severity banding cutoffs (decision #020). These are the exact
     # numbers the deterministic severity engine bands against, kept in
     # config so a clinician can tune them without touching code.

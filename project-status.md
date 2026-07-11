@@ -3,7 +3,7 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-10 (Sprint 6.5 COMPLETE — full-panel scope expansion: one-sided ranges, sex-aware resolution, the assessment-policy scope split, and the multi-panel KB)
+**Last updated:** 2026-07-10 (Sprint 7 IN PROGRESS — post-6.5 Staff review + hardening done; Sprint 7 planned (docs/15); 7.1 assembly contract locked; 7.2 confidence engine built)
 
 ---
 
@@ -23,6 +23,44 @@ between chats, so this file carries it. Read this FIRST every session.*
 - **Brevity:** reference this file; don't re-explain context already written here.
 - **Model choice:** lightest capable model for routine/mechanical work; reserve
   the strongest for genuinely complex reasoning or coding.
+
+---
+
+## ▶ CURRENT SPRINT: Sprint 7 — Confidence, Orchestration & Explainability (IN PROGRESS)
+
+*Full plan: `docs/15-sprint-7-plan.md` (14 tasks). Milestone:
+`analyze_document(path) -> AnalysisReport` — one call runs the whole pipeline,
+still complete when AI is down.*
+
+**Since the Sprint 6.5 close, this session did:**
+
+- **Staff-level code review** of the repo (only Mediscan is bridge-connected).
+  Verdict: clean, no criticals, no Sprint-7 blockers. Report covered security,
+  docs, architecture, production-readiness.
+- **Post-review hardening (all committed):** new `observability/` logging
+  module (PHI-safe `configure_logging`/`get_logger`) wired into the guardrail +
+  fallback chain; CI now runs coverage + `pip-audit` + a `gitleaks` secret-scan
+  job (+ `gitleaks` pre-commit hook, needs `GITHUB_TOKEN` env — done); Dependabot
+  added; docstring gaps + empty-package scaffolds filled; dead `hello()` removed.
+- **Sprint 7 planned** (docs/15) with Rohit's scope choices: **core + parser
+  refactor + persisted RAG index**, built **sync-first then asyncio**.
+- **7.1 assembly contract LOCKED** (docs/15 Appendix A): explanations stay
+  REPORT-LEVEL (no per-finding); add ONE schema field `AnalysisReport.coverage`
+  (`CoverageResult`) to surface the assessed/acknowledged split; async core +
+  sync wrapper. Pipeline order fixed: deterministic verdict completes BEFORE any
+  AI; only `coverage.assessed` feeds urgency (#006).
+- **7.2 confidence engine BUILT** (`confidence/scoring.py`): pure weighted blend
+  of ocr/extraction/validation/grounding + a fallback-depth penalty (floored);
+  weights in config with a sum-to-1 guard; per-dimension rule helpers. 15 tests.
+
+**Sprint 7 decisions to log at close:** #031 confidence blend; #032
+sync-then-async orchestration (+timeouts/cancellation); #033 composable-
+recognizer parser; #034 persisted hash-keyed RAG index.
+
+**▶ NEXT: 7.3 — report-level explanation assembly** (gather grounded
+patient/doctor/dietary/specialist across abnormal findings, with provenance +
+grounding_sources, respecting `max_explained_findings`). Then 7.4 sync
+orchestrator (needs the `AnalysisReport.coverage` schema field added).
 
 ---
 
