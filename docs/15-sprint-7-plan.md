@@ -279,3 +279,77 @@ reality and a fresh session could resume from `project-status.md`.
 - Age-specific ranges (the sex block generalizes to a demographic key, #029) →
   RC2.
 - KB sourcing review (#019) remains a clinical-use gate tracked separately.
+
+---
+
+## Appendix A — 7.1 assembly contract (LOCKED)
+
+*Decided with Rohit at kickoff. This is the contract every later task builds
+to. Grounded in the ACTUAL schemas, not the sketch.*
+
+### The three forks (locked)
+
+- **A1 — Explanations are REPORT-LEVEL for RC1.** The `AnalysisReport` schema
+  already holds one `patient_summary`, one `doctor_summary`, and lists of
+  `dietary_considerations` / `specialist_suggestions`. We keep that shape and
+  ground those summaries across ALL abnormal findings. Per-finding explanation
+  blocks are an RC2 enhancement — no schema churn now. (The 7.3 task title
+  "per-finding chain" is downgraded to "report-level assembly grounded across
+  abnormal findings".)
+- **A2 — Add a coverage surface to the report.** One additive, optional field:
+  `coverage: CoverageResult | None` on `AnalysisReport`. This carries the
+  Sprint-6.5 split (assessed / acknowledged / unparsed) into the final output,
+  so acknowledge-don't-skip holds end to end. `lab_results` stays as the raw
+  extracted audit rows; `coverage` carries the interpretation. This is the
+  ONLY schema change the sprint needs.
+- **A3 — Async core + sync wrapper.** `analyze_document_async(...)` is the real
+  function; `analyze_document(...) = asyncio.run(analyze_document_async(...))`.
+  Phase A builds the async-shaped code but calls everything sequentially;
+  Phase B makes the independent per-finding work concurrent.
+
+### Default decisions (my leanings, locked unless you object)
+
+- **Confidence blend (7.2).** `overall = w_ocr·ocr + w_ext·extraction +
+  w_val·validation + w_ground·grounding`, then a fallback penalty
+  `overall *= max(floor, 1 − k·fallback_depth)`. Default weights in config:
+  ocr 0.25, extraction 0.30, validation 0.25, grounding 0.20 (sum 1.0);
+  penalty k 0.10, floor 0.5. All tunable, all in config (#020 pattern).
+- **Explanation cap (7.3).** Config `max_explained_findings` (default 12),
+  most-severe-first, so a 30-abnormal report can't explode token cost.
+- **Persisted index (7.10).** Cache at a configurable path (default
+  `~/.cache/mediscan/rag_index`), keyed by a SHA-256 of the KB JSON files;
+  mismatch → rebuild + re-cache. Cache holds only public KB snippets (#010).
+
+### The pipeline order (what fills each AnalysisReport field)
+
+```
+analyze_document_async(path) ->
+  1. validate_upload(path)                 -> DocumentType            [ingestion]
+  2. store + extract text (factory/router) -> full_text, ocr_conf     [ocr]
+       -> metadata.ocr_engine, confidence.ocr
+  3. parse_lab_text(full_text)             -> ParseOutcome            [extraction]
+       -> AnalysisReport.lab_results (raw audit rows)
+  4. extract_patient_context(full_text)    -> sex                     [extraction]
+  5. classify_coverage(outcome, sex)       -> CoverageResult          [medical]
+       -> AnalysisReport.coverage            (NEW field, A2)
+  6. assess_urgency(coverage.assessed)     -> UrgencyAssessment       [medical]
+       -> AnalysisReport.urgency             (assessed ONLY — #006)
+  7. explain (abnormal assessed findings)  -> summaries + lists       [ai + rag]
+       guardrail each string; record provenance + grounding_sources
+       -> patient_summary, doctor_summary, dietary_*, specialist_*
+       -> metadata.models_used, metadata.fallback_count
+       *** this is the concurrent step in Phase B ***
+  8. score_confidence(signals)             -> ConfidenceBreakdown     [confidence]
+       -> AnalysisReport.confidence
+  9. metadata.duration_ms = elapsed; disclaimer defaulted
+  -> validated AnalysisReport
+```
+
+**Invariants the orchestrator must uphold:** the deterministic verdict (steps
+3–6) is complete BEFORE any AI runs (step 7); AI failure/timeout degrades
+step 7 to templates but never blocks steps 1–6, 8–9; only `coverage.assessed`
+reaches urgency; nothing but events/metrics is logged.
+
+**Done-when (7.1):** ✅ forks locked (A1–A3), defaults set, pipeline order +
+the single schema change (`AnalysisReport.coverage`) written down. Ready for
+7.2.
