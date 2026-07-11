@@ -1,23 +1,37 @@
-"""Build the in-memory vector index from the knowledge-base files.
+"""Build the vector index from the knowledge-base files.
 
 WHY THIS FILE EXISTS
     RAG needs a searchable store of our curated snippets. This module reads
     every TestKnowledge JSON, chunks each entry into snippets, and loads them
-    into an in-memory ChromaDB collection. Rebuilding from the files each run
-    keeps the JSON as the single source of truth (no stale index).
+    into a ChromaDB collection.
+
+    Two build modes:
+      - build_index(...)             — in-memory (Ephemeral), used by tests.
+      - build_persistent_index(...)  — persisted to disk, keyed by a HASH of the
+        KB files (Sprint 7.10). A warm start LOADS the on-disk index without
+        re-embedding; when any KB file changes the hash changes and the index
+        is rebuilt + persisted (stale directories pruned). Keyed-by-content
+        makes a stale index impossible by construction.
 
     ChromaDB is imported LAZILY so this module — and the snippet-loading half
-    — works without it (tests that only check loading need no vector DB).
+    — works without it (tests that only check loading/hashing need no vector DB).
 """
 
+import hashlib
 import json
+import shutil
 import uuid
 from functools import cache
 from pathlib import Path
 
+from mediscan.config import settings
 from mediscan.schemas import KnowledgeSnippet, TestKnowledge
 
 _KB_DIR = Path(__file__).resolve().parent.parent / "knowledge_base" / "test_knowledge"
+
+# One fixed collection name is safe for the PERSISTENT index because each KB
+# hash gets its OWN directory — no cross-hash name collision is possible.
+_COLLECTION_NAME = "mediscan_kb"
 
 
 def load_test_knowledge() -> list[TestKnowledge]:
@@ -90,9 +104,90 @@ def build_index(embedding_function):
     return collection
 
 
+def _hash_kb(kb_dir: Path | None = None) -> str:
+    """Return a SHA-256 fingerprint of the KB JSON files (name + contents).
+
+    The fingerprint changes whenever any file is added, removed, renamed, or
+    edited — so it's the perfect cache key: same KB -> same hash -> load the
+    cached index; any change -> new hash -> rebuild. Pure and offline
+    (no ChromaDB), so the invalidation logic is directly testable.
+    """
+    directory = kb_dir or _KB_DIR
+    digest = hashlib.sha256()
+    for path in sorted(directory.glob("*.json")):
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _prune_stale_indexes(cache_root: Path, *, keep: str) -> None:
+    """Delete cached index directories for OLD KB hashes, keeping only `keep`.
+
+    Without this, every KB edit would leave its old index dir behind forever.
+    Best-effort: a directory that can't be removed is skipped, never fatal.
+    """
+    if not cache_root.is_dir():
+        return
+    for child in cache_root.iterdir():
+        if child.is_dir() and child.name != keep:
+            shutil.rmtree(child, ignore_errors=True)
+
+
+def _populate(collection) -> None:
+    """Add every KB snippet to a (fresh, empty) collection."""
+    snippets = load_snippets()
+    if snippets:  # ChromaDB rejects an empty add()
+        collection.add(
+            documents=[s.text for s in snippets],
+            metadatas=[{"source": s.source, "test": s.test_name} for s in snippets],
+            ids=[f"snippet-{i}" for i in range(len(snippets))],
+        )
+
+
+def build_persistent_index(embedding_function, *, cache_dir: str | Path | None = None):
+    """Build-or-load the persistent KB index, keyed by a hash of the KB files.
+
+    Warm start (KB unchanged): the on-disk index is opened and returned WITHOUT
+    re-embedding. Cold start / KB changed: a fresh per-hash directory is built,
+    populated, persisted, and older hash directories are pruned.
+
+    A corrupt or version-incompatible cache directory must never break startup:
+    on any load error we delete that directory and rebuild from scratch.
+    """
+    import chromadb
+
+    cache_root = Path(cache_dir or settings.rag_index_cache_dir).expanduser()
+    kb_hash = _hash_kb()
+    index_dir = cache_root / kb_hash
+
+    try:
+        client = chromadb.PersistentClient(path=str(index_dir))
+        collection = client.get_or_create_collection(
+            name=_COLLECTION_NAME, embedding_function=embedding_function
+        )
+        if collection.count() == 0:  # a freshly-created (cold) directory
+            _populate(collection)
+            _prune_stale_indexes(cache_root, keep=kb_hash)
+        return collection
+    except Exception:  # noqa: BLE001 - a bad cache must degrade to a rebuild
+        shutil.rmtree(index_dir, ignore_errors=True)
+        client = chromadb.PersistentClient(path=str(index_dir))
+        collection = client.get_or_create_collection(
+            name=_COLLECTION_NAME, embedding_function=embedding_function
+        )
+        _populate(collection)
+        return collection
+
+
 @cache
 def get_index():
-    """Return the shared production index, built once with the real BGE model."""
+    """Return the shared production index, built or loaded once with real BGE.
+
+    Uses the PERSISTENT index (Sprint 7.10): the first process to run with a
+    given KB pays the embedding cost; later processes load it from disk.
+    """
     from mediscan.rag.embedding import bge_embedding_function
 
-    return build_index(bge_embedding_function())
+    return build_persistent_index(bge_embedding_function())

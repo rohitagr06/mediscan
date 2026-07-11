@@ -95,6 +95,12 @@ class Settings(BaseSettings):
     # results can't explode the prompt. Selection is most-severe-first.
     max_explained_findings: int = Field(default=12, ge=1, le=100)
 
+    # Where the persisted RAG index is cached (Sprint 7.10). Keyed by a hash of
+    # the KB files: a warm start LOADS it without re-embedding; a KB change
+    # rebuilds. Outside the package so built wheels stay clean; holds only
+    # public KB snippets, never PHI (#010).
+    rag_index_cache_dir: str = "~/.cache/mediscan/rag_index"
+
     # Severity banding cutoffs (decision #020). These are the exact
     # numbers the deterministic severity engine bands against, kept in
     # config so a clinician can tune them without touching code.
