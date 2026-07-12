@@ -56,9 +56,12 @@ addopts = "-m 'not slow'"
 
 [tool.coverage.run]
 source = ["src/mediscan"]
-# The presentation/orchestration packages are Sprint-7/8 scaffolds with no
-# code yet; omit them so coverage reflects what actually exists today.
-omit = ["*/ui/*", "*/reports/*", "*/orchestration/*", "*/confidence/*"]
+# Only the still-empty Sprint-8 presentation scaffolds are omitted. The
+# orchestration + confidence packages now hold real, tested code (Sprint 7),
+# so they ARE measured.
+omit = ["*/ui/*", "*/reports/*"]
 
 [tool.coverage.report]
 show_missing = true
+# Ratchet: CI passes --cov-fail-under to enforce a floor. Bump it as coverage
+# rises; never lower it. (Set to your measured baseline minus a small margin.)
