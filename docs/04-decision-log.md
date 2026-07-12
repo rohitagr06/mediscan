@@ -1,47 +1,291 @@
 # MediScan — Decision Log
 
-*Every significant decision gets a row. When future-you asks "why on earth did we do it this way?", the answer lives here. Real teams call these ADRs (Architecture Decision Records).*
+*Every significant decision gets an entry. When future-you asks "why on earth
+did we do it this way?", the answer lives here. Real teams call these ADRs
+(Architecture Decision Records).*
 
-| # | Date | Decision | Why | Revisit when |
-|---|---|---|---|---|
-| 001 | 2026-07-03 | **Mentor mode**: Rohit writes the code, Claude architects, explains, reviews, unblocks | Primary goal is deep learning, not just a shipped product | Never — this is the point |
-| 002 | 2026-07-03 | **Lean docs first**, deep docs (LLD, full diagrams, security architecture) written as the system grows | 21 upfront documents would delay hands-on learning by weeks | If docs fall behind reality |
-| 003 | 2026-07-03 | **No Django in RC1.** RC1 = Python package + Gradio. Django arrives in RC2 with PostgreSQL/sessions | RC1 has no DB, no auth — Django would be dead weight and cognitive overload for a first web project | Start of RC2 |
-| 004 | 2026-07-03 | **Free-model chain**: Gemini free tier → GitHub Models (GPT-4.1-mini) → GitHub Models (Phi-4) → deterministic templates | No paid OpenAI key; GitHub Models + Gemini free tiers cover development at ₹0 | If free limits block development, or the project gets budget |
-| 005 | 2026-07-03 | **RC1 scope = English lab reports only** (tabular diagnostic-lab PDFs/photos) | Narrow-and-working beats broad-and-broken; it's also the most common real document | RC2 scope planning |
-| 006 | 2026-07-03 | **Deterministic-first, AI-explains**: severity + urgency computed only by auditable rules; LLMs restricted to explanation/summarization | Medical safety, auditability, and zero-AI graceful degradation | Never (safety principle) |
-| 007 | 2026-07-03 | 8 weekly sprints; sprints detailed just-in-time (next sprint fully specified, later ones outlined) | 20+ hrs/week pace; plans made months ahead of code always rot | End of every sprint |
-| 008 | 2026-07-03 | PaddleOCR is the target OCR engine; **Tesseract permitted as dev-time substitute** behind the same `OcrEngine` interface if macOS install fights us | Apple Silicon PaddleOCR installs are notoriously flaky; the abstraction makes the engine swappable | Sprint 3 |
-| 009 | 2026-07-03 | `src/` layout, uv, Ruff+Black, pre-commit, CI from Sprint 0 | Production habits are learned by starting with them, not bolting them on | — |
-| 010 | 2026-07-03 | No real medical documents ever enter the repo, tests, or logs — synthetic fixtures only | PHI protection is absolute; a public GitHub repo must never contain anyone's health data | Never |
-| 011 | 2026-07-03 | Confidence scores have NO defaults — every score must be set explicitly; an absent ConfidenceBreakdown means "not yet scored" | A default of 1.0 could silently present unscored output as fully confident — unacceptable in a medical tool. Raised by Rohit during schema review | Never (safety principle) |
-| 012 | 2026-07-03 | Schema security hardening: all models inherit MediScanModel with extra="forbid" + whitespace stripping; lab values ban NaN/Infinity and booleans; length caps on extracted strings | Probing found 6 silent acceptance holes (NaN values, hallucinated extra fields silently dropped, whitespace names, 1MB strings, bool→1.0 coercion). All are realistic OCR/LLM failure modes | If extra="forbid" proves too strict for a future provider integration |
-| 013 | 2026-07-03 | validate_assignment=True on MediScanModel: mutating any field re-runs all validators. frozen=True considered and deferred | Post-construction mutation bypassed every validator (found by Rohit while evaluating frozen=True). frozen rejected for now: it is shallow (lists stay mutable), model_copy(update=) skips validation anyway, and the pipeline's enrichment flow (engine sets severity later) fits validated mutation better | RC2 — revisit frozen snapshots for audit trail |
-| 014 | 2026-07-04 | PageText.char_count is a COMPUTED field, never stored/supplied | A stored copy drifted from its source: the base model's whitespace stripping shortened text after the engine had counted it (off-by-one crash on first real extraction). Derived values are measured, not remembered | If a counted-before-normalization value is ever genuinely needed |
-| 015 | 2026-07-04 | PaddleOCR confirmed as the RC1 OCR engine for scans and photos (PyMuPDF continues to handle text-PDFs) — the Tesseract escape hatch from #008 stays designed but unused | Installed cleanly on Apple Silicon via `uv add paddleocr paddlepaddle`; ~200 MB of models auto-downloaded to ~/.paddlex on first run; first inference ran without errors and returned honest empty results on a blank image. Experiment finished well inside the 90-min timebox | If PaddleOCR proves too slow on real multi-page documents, fails on the Hugging Face Spaces machine in Sprint 8, or a future version breaks on Apple Silicon |
-| 016 | 2026-07-05 | KEEP image preprocessing (grayscale → autocontrast → upscale-if-small) and wire it into the scanned-document OCR path (3.6) | On a deliberately degraded photo: confidence 0.829 without vs 0.911 with preprocessing (+0.082, ~10% relative); key tokens "Hemoglobin" and "9.8" survived both runs. Measured by Rohit | Evidence is ONE synthetic bad photo — revisit when Sprint 8's evaluation measures across many varied real photos |
-| 017 | 2026-07-05 | The OCR engine factory is keyed by DocumentType (PDF_TEXT→PyMuPdf, IMAGE→Paddle, PDF_SCANNED→ScannedPdf), not by OCR backend | Decision #015 made PaddleOCR the only backend, so a backend-selection factory would be premature abstraction. The real runtime gap is mapping the router's DocumentType output to the right engine — that is what this factory fills | If a SECOND OCR backend is ever added (e.g. Tesseract for a deployment where Paddle won't run), revisit — the factory may then need to select backend as well as document type |
-| 018 | 2026-07-05 | The parser recognizes a lab row ONLY when it has a two-sided POSITIVE reference range (e.g. "13.0 - 17.0"); rows without a range, or with negative reference values, are recorded as unparsed rather than parsed | Anchoring on the reference-range shape cleanly separates real lab rows from headers/page numbers, and fits the RC1 CBC-panel scope (#005) where all ranges are two-sided and positive. Losing a rare unusual row to unparsed_lines is honest and safe; mis-parsing a header as a value is not | When RC scope expands beyond CBC-style panels (one-sided ranges like "< 200", or tests with negative reference values such as base excess) |
-| 019 | 2026-07-05 | The reference-range knowledge base lives INSIDE the package (src/mediscan/knowledge_base/) as validated JSON, not at the repo root; every entry carries a mandatory `source` field | An installed package must carry its own data to run when deployed (Sprint 8 / Hugging Face) — root-level data would be dropped from the built wheel. The mandatory source field forces human review of every medical number before use | Sprint 8: add a package-data line to pyproject.toml and test the built wheel includes the JSON. Also: KB numbers are STARTER values pending Rohit's sourced review before any clinical use |
-| 020 | 2026-07-05 | Severity banding is HYBRID: where the KB defines critical thresholds, band by fraction of the way from the normal boundary to the critical value (Option B); where it does not, band by percentage deviation from the boundary (Option A). NEVER assign CRITICAL without a human-sourced threshold — cap at HIGH. Band cutoffs live in config | Option B is clinically grounded (scales with the real danger point) but needs sourced criticals; Option A is the honest generic fallback. Refusing to invent a CRITICAL line upholds #006 (deterministic-first, no invented medical facts); over-warning (HIGH) is the safe error, under-warning is not | If sourced critical thresholds become available for all in-scope tests (then Option B everywhere), or if evaluation shows the cutoffs mis-band real reports |
-| 021 | 2026-07-05 | The medical engine is a PURE function: assess_lab_result(LabResult) -> SeverityAssessment (new value), never mutating the input. LabResult.severity/direction are populated later by the orchestration layer, not by the engine | Purity gives concurrency-safety for Sprint 7's async assessment (mutation would risk data races), preserves the parser's raw output as an immutable audit record separate from our conclusions (#006), and is trivially testable. Weakens #013's mutation rationale — nudges toward frozen models in RC2. Raised by Rohit | If a measured need for in-place enrichment ever outweighs these — unlikely |
-| 022 | 2026-07-08 | Urgency is a conservative roll-up of per-test severities via a GRADUATED mapping (Normal/Mild→Routine, Moderate→Consult Soon, High→Urgent, Critical→Seek Immediate Care); the report's level is the WORST finding's level. A value that could not be assessed (severity None) floors the report at Consult Soon and is named as a reason | Over-warning is the safe error, under-warning is not (#006/#020): a single Critical must reach Seek Immediate Care. The graduated ladder gives each band a distinct action. Flooring un-assessable values upholds "unknown never masquerades as fine" (#011/#014) — we can't confirm safety, so we prompt review rather than stay silent | If evaluation shows the mapping over- or under-warns on real reports, or if age/gender-specific ranges change what "un-assessable" means |
-| 023 | 2026-07-08 | When a report supplies its own reference range, MediScan keeps that range for normal/mild/moderate/high banding but MERGES IN the KB's critical thresholds — and only those that sit STRICTLY OUTSIDE the report's normal range (a threshold inside the report range is dropped; the report wins, that side falls back to percentage banding). Criticals are grouped in a CriticalThresholds value object whose `source` is DERIVED from the data (KNOWLEDGE_BASE when any threshold is present, else UNKNOWN); range provenance is recorded separately as reference_range_source. The severity engine is unchanged in logic — it reads criticals through the grouped object | Fixes an EMERGENT safety gap where three individually-correct decisions interacted badly: the parser (#018) accepts only rows with a printed range, and resolution is report-first, so the KB's critical thresholds were never consulted end-to-end — a critically low value (Hb 3.0 in a printed 13-17 range) could only reach HIGH, contradicting #020's intent. Report ranges are lab-specific and authoritative for normal/abnormal; KB criticals are human-reviewed and sourced; merging them prevents under-warning without inventing facts. Grouping keeps RC2 (age/sex/pregnancy thresholds) from bloating RangeResolution; deriving `source` removes a drift bug. Strengthens #006: the engine is still 100% deterministic — it just receives a richer resolution | If reports ever print their OWN critical thresholds (then `source` must become real provenance, not derived), or if per-age/sex ranges change what "outside the report range" means |
-| 024 | 2026-07-09 | ONE AI SDK and ONE provider class: Gemini and GitHub Models are both driven through the `openai` SDK via their OpenAI-compatible endpoints, behind a single medicine-blind `LLMClient` contract (LLMRequest in, uniform LLMResponse out). Providers never learn medical meaning; the #004 chain is three CONFIGS of one class | Two SDKs and per-vendor classes were designed, then collapsed when Rohit spotted both endpoints speak the OpenAI API. One class = one place for timeouts/secrets/error-normalization; adding a provider is a builder function, zero new code. Medicine-blind providers keep the AI platform reusable and the #006 boundary sharp | If a future provider does NOT speak the OpenAI API, or providers need per-vendor features (native structured output, streaming) |
-| 025 | 2026-07-09 | Prompts are versioned `PromptTemplate` OBJECTS (name, version, system prompt, user template, output schema) with injection fencing built into `build()`; every generated output carries an `ExplanationProvenance` (ai vs deterministic, prompt name+version, provider, model, temperature, timestamp) | Loose .txt prompts rot silently; versioned objects make a prompt change a traceable event (the OcrEngine contract pattern applied to prompts, raised by Rohit). Provenance answers "which prompt/model wrote this?" at debug time and feeds Sprint 7 confidence weighting. The FACTS fence + system rules are the prompt-injection defense: document text is data, never instructions | When a second prompt version ships, revisit whether versions need side-by-side evaluation; provenance `source` derivation assumes criticals of authorship are binary (ai/deterministic) |
-| 026 | 2026-07-09 | AI output guardrail is deterministic block-and-fall-back: regex rules for dosage/prescription/diagnosis-language run over every AI string; a trip discards the AI text and substitutes the deterministic template for that output. Failure reasons are CATEGORIES, never the text | A prompt can be talked around; a regex cannot. Over-blocking degrades to a safe plainer template (acceptable); under-warning is not. Categories-not-text keeps PHI out of logs. Combined with the 5.3 system-prompt rules this is defense in depth: prevent AND catch | If real-world use shows systematic over-blocking (tune patterns), or an LLM-based safety classifier is added as a SECOND layer (never a replacement) in RC2 |
-| 027 | 2026-07-09 | RC1 scope EXPANDED (revises #005): MediScan reads a full-body health checkup report for BOTH sexes — CBC, kidney function (KFT), lipid profile, electrolytes, vitamins, diabetes (glucose/HbA1c), thyroid, and NUMERIC urine values — not just CBC. The parser gains ONE-SIDED ranges ("< 200", "> 40", "< 5.7 %") alongside two-sided; reference ranges become SEX-AWARE, with the patient's sex READ FROM THE REPORT (conservative/combined fallback when absent). Purely qualitative results (urine Present/Absent/Trace, colour, turbidity) are DEFERRED. SEQUENCING: RAG is built in Sprint 6 on the current CBC knowledge; the deterministic-engine expansion (parser formats + sex-aware ranges + multi-panel sourced KB) is the NEXT sprint (6.5) | The CBC-only framing in #005 was a miscommunication — the product was always meant to read a standard full-body checkup. The RAG machinery is panel-agnostic (KB is data), so building it now on CBC and growing the KB later needs no RAG code change; the real work is the engine expansion, which earns its own sprint. Report-printed ranges are already sex-correct, so sex mainly affects KB FALLBACK ranges/criticals. One-sided ranges cover lipids/HbA1c/thyroid; deferring qualitative urine bounds parser complexity (how "severe" is "Trace protein?") | If scope should later include qualitative urine/micro results, age-specific ranges, non-English reports, or imaging/pathology narratives |
-| 028 | 2026-07-09 | **RAG built now on the current CBC KB, feeding the AI layer ONLY.** Grounding is real ChromaDB + local BGE-small embeddings in an in-memory index REBUILT from the knowledge-base JSON each process (no stale cache); the embedder is INJECTABLE (real BGE in production, a deterministic word-overlap fake in tests — zero model, zero network in CI). For each abnormal finding the retriever's top-K sourced snippets are appended to the existing Sprint-5 FACTS block, and every AI explanation records its `grounding_sources` (traceability). The medical engine must NEVER import `rag/` — enforced by an AST boundary test, not a promise. A slow-marked test exercises the real model. | Full RAG (not a keyed lookup) is the architecture that SCALES: adding thyroid/lipid/every panel later is NEW JSON, not new code (the KB is data), so building it now on 5 CBC tests costs nothing to grow. RAG is the single biggest defense against hallucination — the AI answers open-book from our sourced notes, not memory — while #006 stays intact: RAG feeds only the explanation, never severity/urgency, and if retrieval finds nothing the AI still explains from the verdict (never a single point of failure). In-memory-from-files kills the stale-index bug class; the fake embedder keeps the suite fast and offline. | If the KB grows large enough that rebuild-per-process is slow (add a persisted index + invalidation), if a better embedding model is worth swapping in (one-line change — the embedder is injectable), or if retrieval quality needs re-ranking/score thresholds |
+Each entry records four things: **Decision** (what we chose), **Why** (the
+reasoning and what we gave up), and **Revisit** (what would make us reconsider).
 
-| 029 | 2026-07-10 | **Sex-aware + one-sided range resolution.** The parser gains ONE-SIDED ranges ("< 100", "> 40", "< 5.7 %") alongside two-sided (extends #018 per #027). The patient's SEX is read from the report header (`extract_patient_context` → `PatientContext`) and threaded through resolution. Resolution stays REPORT-FIRST (#023): a printed range still wins, so sex only steers the KB FALLBACK — a sex-dependent test picks its `male`/`female` block, and when sex is UNKNOWN the fallback is the UNION of both sexes (widest band: min low, max high). Severity banding handles one-sided ranges via `None`-bound guards and NEVER invents a direction (a "< 100" value can only flag HIGH; a "> 40" only LOW). | Real reports print sex-correct ranges, so report-first means sex rarely changes a graded verdict — but the fallback MUST be right when a range is absent, and unioning for unknown sex is the conservative choice (never narrower than the true range, so it can't manufacture a false abnormal). One-sided banding via `None` guards reuses the existing engine with no new branch to mis-tune; refusing to invent a direction upholds #006/#020 (over-warning is the safe error, silent wrong-direction is not). | If age-specific ranges arrive (the sex block generalizes to a demographic key), or if a report ever prints only a one-sided range for a two-sided test |
-| 030 | 2026-07-10 | **Scope tiers + acknowledge-don't-skip.** Which tests MediScan GRADES is decided by an explicit `AssessmentPolicy` table kept SEPARATE from the medical KB — product policy, not medical fact. Three tiers: **A = ASSESSED** (graded by the engine), **B = DEFERRED** (acknowledged numeric, shown with its range, not graded in RC1), **C = EXCLUDED/sensitive** (acknowledged, NO range or verdict, refer to a doctor). `classify_coverage` splits every parsed test into a `CoverageResult` (assessed / acknowledged / unparsed); ONLY the assessed bucket feeds the urgency roll-up. A test with no policy row defaults to acknowledged-NUMERIC. The four-layer coupling (policy ↔ reference-range KB ↔ knowledge KB ↔ normalization) is guarded by load-time KB integrity checks. | Acknowledge-don't-skip means a user's out-of-scope test is never silently dropped — it is read and SHOWN, just not graded — honest about RC1's limits without hiding the user's own data. Gating grading by an allowlist (not by whether a value "looks scary") keeps the #006 boundary razor-sharp: a sensitive tumour marker at 50× its limit cannot move the verdict. Keeping policy OUT of the KB means widening scope is a policy-row + KB-entry addition, not surgery on medical facts. Tradeoff: a real abnormality in a deferred/sensitive test is not flagged by us — accepted, because we tell the user to take it to a doctor rather than pretend competence we haven't earned. | When a deferred (Tier-B) test earns sourced ranges and graduates to Tier-A, or if the tiers ever need per-report / per-user configuration |
+---
 
-| 031 | 2026-07-10 | **Confidence is a deterministic weighted blend (Sprint 7.2).** `overall = Σ(wᵢ·scoreᵢ) × max(floor, 1 − k·fallback_depth)` over four per-stage scores (ocr, extraction, validation, grounding), each in [0,1]. Per-dimension rules: extraction = method score (rules 1.0 > llm 0.7); validation = 1 − 0.25·repair_retries; grounding = grounded_AI ÷ total_AI (1.0 when there are no AI outputs). Weights (summing to 1.0, validated at startup), the penalty rate k, and the floor all live in config. | Trust must be explainable and DETERMINISTIC — no AI decides how much to trust the report (#011). A weighted blend surfaces WHY confidence is low (which stage), which one naive number hides. Purity makes it testable and safe to call anywhere. Startup weight-sum validation stops a mistyped weight from ever producing a >1 confidence. | When Sprint-8 evaluation measures real reports (tune weights); if the AI layer surfaces its repair-retry count (validation becomes live); if a per-finding confidence is ever needed |
-| 032 | 2026-07-10 | **Sync-first, then async orchestration (Sprint 7.4/7.6).** One orchestrator builds the whole `AnalysisReport`. The deterministic core (parse → sex → coverage → urgency) is synchronous; the FOUR AI explanation outputs run CONCURRENTLY by running the existing SYNCHRONOUS chain in the event loop's default thread executor (`asyncio.gather` + `run_in_executor`), each bounded by `asyncio.wait_for(timeout)` and degrading per-output to its deterministic template. Public API = async core + sync wrapper (`analyze_text_async` / `analyze_text = asyncio.run(...)`). The core is fully injectable (providers, retriever, clock). | Concurrency + timeouts cut wall-clock and stop a hung provider freezing the report, WITHOUT rewriting the AI layer to a native async SDK (a bigger, riskier change) — `run_in_executor` gives real concurrency for I/O-bound calls. Sync-first shipped a complete product before adding concurrency, keeping the lessons separate. #006 is structural: the verdict is complete before any AI runs; only `coverage.assessed` feeds urgency. Tradeoff: executor threads are NOT force-killed on timeout — the await is cancelled and we proceed with the template while the orphaned call finishes and is discarded. | If a native async provider SDK is adopted (true cancellation, RC2), or if per-finding (not report-level) explanations return |
-| 033 | 2026-07-10 | **Composable-recognizer parser decomposition (Sprint 7.8).** The parser keeps ONE anchored line-regex as the tokenizer, but field INTERPRETATION is decomposed into small, independently-tested recognizers (`parse_reference_range`, `_recognize_name`, `_recognize_flag`, `_recognize_number`) composed by `_recognize_row`; `parse_lab_text` becomes a thin tolerant loop. Behaviour-PRESERVING: the regex and every rule are unchanged. | The review flagged the parser's accreting complexity. Decomposition retires the "one giant function" smell WITHOUT changing the matching strategy, so the hard-won real-report behaviour (Tata/Lal/Labsmart) cannot regress — proven by all 35 existing parser tests staying green. A full N-independent-scanner rewrite would gamble that behaviour for little RC1 gain. | If a future report format the single-regex tokenizer cannot express appears — then the scanner-pipeline rewrite is justified (RC2) |
-| 034 | 2026-07-10 | **Persisted hash-keyed RAG index (Sprint 7.10; refines #028's in-memory note).** The index is persisted to a configurable disk cache (default `~/.cache/mediscan/rag_index`) in a directory keyed by a SHA-256 hash of the KB JSON files. A warm start LOADS the on-disk index without re-embedding; any KB change → new hash → rebuild + persist, with stale hash-directories pruned. A corrupt/incompatible cache is cleared (ChromaDB in-process system cache + the directory) and rebuilt — never a startup crash. The in-memory `build_index` stays for tests (injectable fake embedder). | Rebuild-per-process (#028) re-embeds the whole KB on every start — fine for 38 tests, wasteful as it grows. Content-hash keying makes a stale index IMPOSSIBLE by construction: a changed KB can't map to an old index. Cross-process reuse cuts a warm start to a load. The hash + prune logic is pure and unit-tested; the persist/load is ChromaDB-gated (dev/CI). | If the cache location must move for deployment (Sprint 8 / HF Spaces), or if a shared/remote vector store replaces the local cache (RC2) |
+### 001 — Mentor mode · 2026-07-03
+
+**Decision.** Rohit writes the code; Claude architects, explains, reviews, unblocks.
+
+**Why.** Primary goal is deep learning, not just a shipped product.
+
+**Revisit.** Never — this is the point.
+
+### 002 — Lean docs first · 2026-07-03
+
+**Decision.** Lean docs first; deep docs (LLD, full diagrams, security architecture) written as the system grows.
+
+**Why.** 21 upfront documents would delay hands-on learning by weeks.
+
+**Revisit.** If docs fall behind reality.
+
+### 003 — No Django in RC1 · 2026-07-03
+
+**Decision.** RC1 = Python package + Gradio. Django arrives in RC2 with PostgreSQL/sessions.
+
+**Why.** RC1 has no DB, no auth — Django would be dead weight and cognitive overload for a first web project.
+
+**Revisit.** Start of RC2.
+
+### 004 — Free-model chain · 2026-07-03
+
+**Decision.** Gemini free tier → GitHub Models (GPT-4.1-mini) → GitHub Models (Phi-4) → deterministic templates.
+
+**Why.** No paid OpenAI key; GitHub Models + Gemini free tiers cover development at ₹0.
+
+**Revisit.** If free limits block development, or the project gets budget.
+
+### 005 — RC1 scope: English lab reports only · 2026-07-03
+
+**Decision.** RC1 handles English lab reports only (tabular diagnostic-lab PDFs/photos). *(Later expanded — see #027.)*
+
+**Why.** Narrow-and-working beats broad-and-broken; it's also the most common real document.
+
+**Revisit.** RC2 scope planning.
+
+### 006 — Deterministic-first, AI-explains · 2026-07-03
+
+**Decision.** Severity + urgency are computed only by auditable rules; LLMs are restricted to explanation/summarization.
+
+**Why.** Medical safety, auditability, and zero-AI graceful degradation.
+
+**Revisit.** Never (safety principle).
+
+### 007 — Just-in-time sprint planning · 2026-07-03
+
+**Decision.** 8 weekly sprints; sprints detailed just-in-time (next sprint fully specified, later ones outlined).
+
+**Why.** 20+ hrs/week pace; plans made months ahead of code always rot.
+
+**Revisit.** End of every sprint.
+
+### 008 — PaddleOCR target, Tesseract escape hatch · 2026-07-03
+
+**Decision.** PaddleOCR is the target OCR engine; Tesseract is permitted as a dev-time substitute behind the same `OcrEngine` interface if the macOS install fights us.
+
+**Why.** Apple Silicon PaddleOCR installs are notoriously flaky; the abstraction makes the engine swappable.
+
+**Revisit.** Sprint 3.
+
+### 009 — Production tooling from Sprint 0 · 2026-07-03
+
+**Decision.** `src/` layout, uv, Ruff + Black, pre-commit, CI — all from Sprint 0.
+
+**Why.** Production habits are learned by starting with them, not bolting them on.
+
+**Revisit.** —
+
+### 010 — No real medical documents, ever · 2026-07-03
+
+**Decision.** No real medical documents ever enter the repo, tests, or logs — synthetic fixtures only.
+
+**Why.** PHI protection is absolute; a public GitHub repo must never contain anyone's health data.
+
+**Revisit.** Never.
+
+### 011 — Confidence scores have no defaults · 2026-07-03
+
+**Decision.** Every confidence score must be set explicitly; an absent `ConfidenceBreakdown` means "not yet scored".
+
+**Why.** A default of 1.0 could silently present unscored output as fully confident — unacceptable in a medical tool. Raised by Rohit during schema review.
+
+**Revisit.** Never (safety principle).
+
+### 012 — Schema security hardening · 2026-07-03
+
+**Decision.** All models inherit `MediScanModel` with `extra="forbid"` + whitespace stripping; lab values ban NaN/Infinity and booleans; length caps on extracted strings.
+
+**Why.** Probing found 6 silent acceptance holes (NaN values, hallucinated extra fields silently dropped, whitespace names, 1 MB strings, bool→1.0 coercion) — all realistic OCR/LLM failure modes.
+
+**Revisit.** If `extra="forbid"` proves too strict for a future provider integration.
+
+### 013 — validate_assignment over frozen · 2026-07-03
+
+**Decision.** `validate_assignment=True` on `MediScanModel` (mutating any field re-runs all validators). `frozen=True` considered and deferred.
+
+**Why.** Post-construction mutation bypassed every validator (found by Rohit while evaluating `frozen=True`). `frozen` rejected for now: it is shallow (lists stay mutable), `model_copy(update=)` skips validation anyway, and the pipeline's enrichment flow (engine sets severity later) fits validated mutation better.
+
+**Revisit.** RC2 — revisit frozen snapshots for an audit trail.
+
+### 014 — char_count is computed, never stored · 2026-07-04
+
+**Decision.** `PageText.char_count` is a COMPUTED field, never stored/supplied.
+
+**Why.** A stored copy drifted from its source: the base model's whitespace stripping shortened text after the engine had counted it (off-by-one crash on first real extraction). Derived values are measured, not remembered.
+
+**Revisit.** If a counted-before-normalization value is ever genuinely needed.
+
+### 015 — PaddleOCR confirmed as RC1 OCR engine · 2026-07-04
+
+**Decision.** PaddleOCR is the RC1 OCR engine for scans and photos (PyMuPDF continues to handle text-PDFs); the Tesseract escape hatch from #008 stays designed but unused.
+
+**Why.** Installed cleanly on Apple Silicon via `uv add paddleocr paddlepaddle`; ~200 MB of models auto-downloaded to `~/.paddlex` on first run; first inference ran without errors and returned honest empty results on a blank image. Experiment finished well inside the 90-min timebox.
+
+**Revisit.** If PaddleOCR proves too slow on real multi-page documents, fails on the Hugging Face Spaces machine in Sprint 8, or a future version breaks on Apple Silicon.
+
+### 016 — Keep image preprocessing · 2026-07-05
+
+**Decision.** Keep image preprocessing (grayscale → autocontrast → upscale-if-small) and wire it into the scanned-document OCR path (3.6).
+
+**Why.** On a deliberately degraded photo: confidence 0.829 without vs 0.911 with preprocessing (+0.082, ~10% relative); key tokens "Hemoglobin" and "9.8" survived both runs. Measured by Rohit.
+
+**Revisit.** Evidence is ONE synthetic bad photo — revisit when Sprint 8's evaluation measures across many varied real photos.
+
+### 017 — OCR factory keyed by DocumentType · 2026-07-05
+
+**Decision.** The OCR engine factory is keyed by `DocumentType` (PDF_TEXT→PyMuPdf, IMAGE→Paddle, PDF_SCANNED→ScannedPdf), not by OCR backend.
+
+**Why.** Decision #015 made PaddleOCR the only backend, so a backend-selection factory would be premature abstraction. The real runtime gap is mapping the router's `DocumentType` output to the right engine — that is what this factory fills.
+
+**Revisit.** If a SECOND OCR backend is ever added (e.g. Tesseract for a deployment where Paddle won't run) — the factory may then need to select backend as well as document type.
+
+### 018 — Parser anchors on a printed reference range · 2026-07-05
+
+**Decision.** The parser recognizes a lab row ONLY when it has a two-sided POSITIVE reference range (e.g. "13.0 - 17.0"); rows without a range, or with negative reference values, are recorded as unparsed rather than parsed. *(One-sided ranges added later — see #029.)*
+
+**Why.** Anchoring on the reference-range shape cleanly separates real lab rows from headers/page numbers, and fits the RC1 CBC-panel scope (#005) where all ranges are two-sided and positive. Losing a rare unusual row to `unparsed_lines` is honest and safe; mis-parsing a header as a value is not.
+
+**Revisit.** When RC scope expands beyond CBC-style panels (one-sided ranges like "< 200", or tests with negative reference values such as base excess).
+
+### 019 — KB lives inside the package, sources mandatory · 2026-07-05
+
+**Decision.** The reference-range knowledge base lives INSIDE the package (`src/mediscan/knowledge_base/`) as validated JSON, not at the repo root; every entry carries a mandatory `source` field.
+
+**Why.** An installed package must carry its own data to run when deployed (Sprint 8 / Hugging Face) — root-level data would be dropped from the built wheel. The mandatory `source` field forces human review of every medical number before use.
+
+**Revisit.** Sprint 8: add a package-data line to `pyproject.toml` and test the built wheel includes the JSON. Also: KB numbers are STARTER values pending Rohit's sourced review before any clinical use.
+
+### 020 — Hybrid severity banding, never invent CRITICAL · 2026-07-05
+
+**Decision.** Severity banding is HYBRID: where the KB defines critical thresholds, band by fraction of the way from the normal boundary to the critical value (Option B); where it does not, band by percentage deviation from the boundary (Option A). NEVER assign CRITICAL without a human-sourced threshold — cap at HIGH. Band cutoffs live in config.
+
+**Why.** Option B is clinically grounded (scales with the real danger point) but needs sourced criticals; Option A is the honest generic fallback. Refusing to invent a CRITICAL line upholds #006 (deterministic-first, no invented medical facts); over-warning (HIGH) is the safe error, under-warning is not.
+
+**Revisit.** If sourced critical thresholds become available for all in-scope tests (then Option B everywhere), or if evaluation shows the cutoffs mis-band real reports.
+
+### 021 — The medical engine is a pure function · 2026-07-05
+
+**Decision.** The medical engine is a PURE function: `assess_lab_result(LabResult) -> SeverityAssessment` (new value), never mutating the input. `LabResult.severity`/`direction` are populated later by the orchestration layer, not by the engine.
+
+**Why.** Purity gives concurrency-safety for Sprint 7's async assessment (mutation would risk data races), preserves the parser's raw output as an immutable audit record separate from our conclusions (#006), and is trivially testable. Weakens #013's mutation rationale — nudges toward frozen models in RC2. Raised by Rohit.
+
+**Revisit.** If a measured need for in-place enrichment ever outweighs these — unlikely.
+
+### 022 — Conservative graduated urgency roll-up · 2026-07-08
+
+**Decision.** Urgency is a conservative roll-up of per-test severities via a GRADUATED mapping (Normal/Mild→Routine, Moderate→Consult Soon, High→Urgent, Critical→Seek Immediate Care); the report's level is the WORST finding's level. A value that could not be assessed (severity None) floors the report at Consult Soon and is named as a reason.
+
+**Why.** Over-warning is the safe error, under-warning is not (#006/#020): a single Critical must reach Seek Immediate Care. The graduated ladder gives each band a distinct action. Flooring un-assessable values upholds "unknown never masquerades as fine" (#011/#014) — we can't confirm safety, so we prompt review rather than stay silent.
+
+**Revisit.** If evaluation shows the mapping over- or under-warns on real reports, or if age/gender-specific ranges change what "un-assessable" means.
+
+### 023 — Report range wins, KB criticals merged in · 2026-07-08
+
+**Decision.** When a report supplies its own reference range, MediScan keeps that range for normal/mild/moderate/high banding but MERGES IN the KB's critical thresholds — and only those that sit STRICTLY OUTSIDE the report's normal range (a threshold inside the report range is dropped; the report wins, that side falls back to percentage banding). Criticals are grouped in a `CriticalThresholds` value object whose `source` is DERIVED from the data (KNOWLEDGE_BASE when any threshold is present, else UNKNOWN); range provenance is recorded separately as `reference_range_source`. The severity engine is unchanged in logic — it reads criticals through the grouped object.
+
+**Why.** Fixes an EMERGENT safety gap where three individually-correct decisions interacted badly: the parser (#018) accepts only rows with a printed range, and resolution is report-first, so the KB's critical thresholds were never consulted end-to-end — a critically low value (Hb 3.0 in a printed 13-17 range) could only reach HIGH, contradicting #020's intent. Report ranges are lab-specific and authoritative for normal/abnormal; KB criticals are human-reviewed and sourced; merging them prevents under-warning without inventing facts. Grouping keeps RC2 (age/sex/pregnancy thresholds) from bloating `RangeResolution`; deriving `source` removes a drift bug. Strengthens #006: the engine is still 100% deterministic — it just receives a richer resolution.
+
+**Revisit.** If reports ever print their OWN critical thresholds (then `source` must become real provenance, not derived), or if per-age/sex ranges change what "outside the report range" means.
+
+### 024 — One AI SDK, one provider class · 2026-07-09
+
+**Decision.** ONE AI SDK and ONE provider class: Gemini and GitHub Models are both driven through the `openai` SDK via their OpenAI-compatible endpoints, behind a single medicine-blind `LLMClient` contract (LLMRequest in, uniform LLMResponse out). Providers never learn medical meaning; the #004 chain is three CONFIGS of one class.
+
+**Why.** Two SDKs and per-vendor classes were designed, then collapsed when Rohit spotted both endpoints speak the OpenAI API. One class = one place for timeouts/secrets/error-normalization; adding a provider is a builder function, zero new code. Medicine-blind providers keep the AI platform reusable and the #006 boundary sharp.
+
+**Revisit.** If a future provider does NOT speak the OpenAI API, or providers need per-vendor features (native structured output, streaming).
+
+### 025 — Versioned prompt templates + provenance · 2026-07-09
+
+**Decision.** Prompts are versioned `PromptTemplate` OBJECTS (name, version, system prompt, user template, output schema) with injection fencing built into `build()`; every generated output carries an `ExplanationProvenance` (ai vs deterministic, prompt name+version, provider, model, temperature, timestamp).
+
+**Why.** Loose .txt prompts rot silently; versioned objects make a prompt change a traceable event (the OcrEngine contract pattern applied to prompts, raised by Rohit). Provenance answers "which prompt/model wrote this?" at debug time and feeds Sprint 7 confidence weighting. The FACTS fence + system rules are the prompt-injection defense: document text is data, never instructions.
+
+**Revisit.** When a second prompt version ships, revisit whether versions need side-by-side evaluation; provenance `source` derivation assumes authorship is binary (ai/deterministic).
+
+### 026 — Deterministic block-and-fall-back guardrail · 2026-07-09
+
+**Decision.** AI output guardrail is deterministic block-and-fall-back: regex rules for dosage/prescription/diagnosis-language run over every AI string; a trip discards the AI text and substitutes the deterministic template for that output. Failure reasons are CATEGORIES, never the text.
+
+**Why.** A prompt can be talked around; a regex cannot. Over-blocking degrades to a safe plainer template (acceptable); under-warning is not. Categories-not-text keeps PHI out of logs. Combined with the 5.3 system-prompt rules this is defense in depth: prevent AND catch.
+
+**Revisit.** If real-world use shows systematic over-blocking (tune patterns), or an LLM-based safety classifier is added as a SECOND layer (never a replacement) in RC2.
+
+### 027 — RC1 scope expanded to a full-body checkup · 2026-07-09
+
+**Decision.** RC1 scope EXPANDED (revises #005): MediScan reads a full-body health checkup report for BOTH sexes — CBC, kidney function (KFT), lipid profile, electrolytes, vitamins, diabetes (glucose/HbA1c), thyroid, and NUMERIC urine values — not just CBC. The parser gains ONE-SIDED ranges ("< 200", "> 40", "< 5.7 %") alongside two-sided; reference ranges become SEX-AWARE, with the patient's sex READ FROM THE REPORT (conservative/combined fallback when absent). Purely qualitative results (urine Present/Absent/Trace, colour, turbidity) are DEFERRED. Sequencing: RAG is built in Sprint 6 on the current CBC knowledge; the deterministic-engine expansion (parser formats + sex-aware ranges + multi-panel sourced KB) is the NEXT sprint (6.5).
+
+**Why.** The CBC-only framing in #005 was a miscommunication — the product was always meant to read a standard full-body checkup. The RAG machinery is panel-agnostic (KB is data), so building it now on CBC and growing the KB later needs no RAG code change; the real work is the engine expansion, which earns its own sprint. Report-printed ranges are already sex-correct, so sex mainly affects KB FALLBACK ranges/criticals. One-sided ranges cover lipids/HbA1c/thyroid; deferring qualitative urine bounds parser complexity (how "severe" is "Trace protein?").
+
+**Revisit.** If scope should later include qualitative urine/micro results, age-specific ranges, non-English reports, or imaging/pathology narratives.
+
+### 028 — RAG built now, feeding the AI layer only · 2026-07-09
+
+**Decision.** RAG built now on the current CBC KB, feeding the AI layer ONLY. Grounding is real ChromaDB + local BGE-small embeddings in an in-memory index REBUILT from the knowledge-base JSON each process (no stale cache); the embedder is INJECTABLE (real BGE in production, a deterministic word-overlap fake in tests — zero model, zero network in CI). For each abnormal finding the retriever's top-K sourced snippets are appended to the existing Sprint-5 FACTS block, and every AI explanation records its `grounding_sources` (traceability). The medical engine must NEVER import `rag/` — enforced by an AST boundary test, not a promise. A slow-marked test exercises the real model. *(In-memory rebuild later persisted — see #034.)*
+
+**Why.** Full RAG (not a keyed lookup) is the architecture that SCALES: adding thyroid/lipid/every panel later is NEW JSON, not new code (the KB is data), so building it now on 5 CBC tests costs nothing to grow. RAG is the single biggest defense against hallucination — the AI answers open-book from our sourced notes, not memory — while #006 stays intact: RAG feeds only the explanation, never severity/urgency, and if retrieval finds nothing the AI still explains from the verdict (never a single point of failure). In-memory-from-files kills the stale-index bug class; the fake embedder keeps the suite fast and offline.
+
+**Revisit.** If the KB grows large enough that rebuild-per-process is slow (add a persisted index + invalidation — done in #034), if a better embedding model is worth swapping in (one-line change — the embedder is injectable), or if retrieval quality needs re-ranking/score thresholds.
+
+### 029 — Sex-aware + one-sided range resolution · 2026-07-10
+
+**Decision.** The parser gains ONE-SIDED ranges ("< 100", "> 40", "< 5.7 %") alongside two-sided (extends #018 per #027). The patient's SEX is read from the report header (`extract_patient_context` → `PatientContext`) and threaded through resolution. Resolution stays REPORT-FIRST (#023): a printed range still wins, so sex only steers the KB FALLBACK — a sex-dependent test picks its `male`/`female` block, and when sex is UNKNOWN the fallback is the UNION of both sexes (widest band: min low, max high). Severity banding handles one-sided ranges via `None`-bound guards and NEVER invents a direction (a "< 100" value can only flag HIGH; a "> 40" only LOW).
+
+**Why.** Real reports print sex-correct ranges, so report-first means sex rarely changes a graded verdict — but the fallback MUST be right when a range is absent, and unioning for unknown sex is the conservative choice (never narrower than the true range, so it can't manufacture a false abnormal). One-sided banding via `None` guards reuses the existing engine with no new branch to mis-tune; refusing to invent a direction upholds #006/#020 (over-warning is the safe error, silent wrong-direction is not).
+
+**Revisit.** If age-specific ranges arrive (the sex block generalizes to a demographic key), or if a report ever prints only a one-sided range for a two-sided test.
+
+### 030 — Scope tiers + acknowledge-don't-skip · 2026-07-10
+
+**Decision.** Which tests MediScan GRADES is decided by an explicit `AssessmentPolicy` table kept SEPARATE from the medical KB — product policy, not medical fact. Three tiers: **A = ASSESSED** (graded by the engine), **B = DEFERRED** (acknowledged numeric, shown with its range, not graded in RC1), **C = EXCLUDED/sensitive** (acknowledged, NO range or verdict, refer to a doctor). `classify_coverage` splits every parsed test into a `CoverageResult` (assessed / acknowledged / unparsed); ONLY the assessed bucket feeds the urgency roll-up. A test with no policy row defaults to acknowledged-NUMERIC. The four-layer coupling (policy ↔ reference-range KB ↔ knowledge KB ↔ normalization) is guarded by load-time KB integrity checks.
+
+**Why.** Acknowledge-don't-skip means a user's out-of-scope test is never silently dropped — it is read and SHOWN, just not graded — honest about RC1's limits without hiding the user's own data. Gating grading by an allowlist (not by whether a value "looks scary") keeps the #006 boundary razor-sharp: a sensitive tumour marker at 50× its limit cannot move the verdict. Keeping policy OUT of the KB means widening scope is a policy-row + KB-entry addition, not surgery on medical facts. Tradeoff: a real abnormality in a deferred/sensitive test is not flagged by us — accepted, because we tell the user to take it to a doctor rather than pretend competence we haven't earned.
+
+**Revisit.** When a deferred (Tier-B) test earns sourced ranges and graduates to Tier-A, or if the tiers ever need per-report / per-user configuration.
+
+### 031 — Confidence is a deterministic weighted blend · 2026-07-10 (Sprint 7.2)
+
+**Decision.** `overall = Σ(wᵢ·scoreᵢ) × max(floor, 1 − k·fallback_depth)` over four per-stage scores (ocr, extraction, validation, grounding), each in [0,1]. Per-dimension rules: extraction = method score (rules 1.0 > llm 0.7); validation = 1 − 0.25·repair_retries; grounding = grounded_AI ÷ total_AI (1.0 when there are no AI outputs). Weights (summing to 1.0, validated at startup), the penalty rate k, and the floor all live in config.
+
+**Why.** Trust must be explainable and DETERMINISTIC — no AI decides how much to trust the report (#011). A weighted blend surfaces WHY confidence is low (which stage), which one naive number hides. Purity makes it testable and safe to call anywhere. Startup weight-sum validation stops a mistyped weight from ever producing a >1 confidence.
+
+**Revisit.** When Sprint-8 evaluation measures real reports (tune weights); if the AI layer surfaces its repair-retry count (validation becomes live); if a per-finding confidence is ever needed.
+
+### 032 — Sync-first, then async orchestration · 2026-07-10 (Sprint 7.4/7.6)
+
+**Decision.** One orchestrator builds the whole `AnalysisReport`. The deterministic core (parse → sex → coverage → urgency) is synchronous; the FOUR AI explanation outputs run CONCURRENTLY by running the existing SYNCHRONOUS chain in the event loop's default thread executor (`asyncio.gather` + `run_in_executor`), each bounded by `asyncio.wait_for(timeout)` and degrading per-output to its deterministic template. Public API = async core + sync wrapper (`analyze_text_async` / `analyze_text = asyncio.run(...)`). The core is fully injectable (providers, retriever, clock).
+
+**Why.** Concurrency + timeouts cut wall-clock and stop a hung provider freezing the report, WITHOUT rewriting the AI layer to a native async SDK (a bigger, riskier change) — `run_in_executor` gives real concurrency for I/O-bound calls. Sync-first shipped a complete product before adding concurrency, keeping the lessons separate. #006 is structural: the verdict is complete before any AI runs; only `coverage.assessed` feeds urgency. Tradeoff: executor threads are NOT force-killed on timeout — the await is cancelled and we proceed with the template while the orphaned call finishes and is discarded.
+
+**Revisit.** If a native async provider SDK is adopted (true cancellation, RC2), or if per-finding (not report-level) explanations return.
+
+### 033 — Composable-recognizer parser decomposition · 2026-07-10 (Sprint 7.8)
+
+**Decision.** The parser keeps ONE anchored line-regex as the tokenizer, but field INTERPRETATION is decomposed into small, independently-tested recognizers (`parse_reference_range`, `_recognize_name`, `_recognize_flag`, `_recognize_number`) composed by `_recognize_row`; `parse_lab_text` becomes a thin tolerant loop. Behaviour-PRESERVING: the regex and every rule are unchanged.
+
+**Why.** The review flagged the parser's accreting complexity. Decomposition retires the "one giant function" smell WITHOUT changing the matching strategy, so the hard-won real-report behaviour (Tata/Lal/Labsmart) cannot regress — proven by all 35 existing parser tests staying green. A full N-independent-scanner rewrite would gamble that behaviour for little RC1 gain.
+
+**Revisit.** If a future report format the single-regex tokenizer cannot express appears — then the scanner-pipeline rewrite is justified (RC2).
+
+### 034 — Persisted hash-keyed RAG index · 2026-07-10 (Sprint 7.10)
+
+**Decision.** Refines #028's in-memory note. The index is persisted to a configurable disk cache (default `~/.cache/mediscan/rag_index`) in a directory keyed by a SHA-256 hash of the KB JSON files. A warm start LOADS the on-disk index without re-embedding; any KB change → new hash → rebuild + persist, with stale hash-directories pruned. A corrupt/incompatible cache is cleared (ChromaDB in-process system cache + the directory) and rebuilt — never a startup crash. The in-memory `build_index` stays for tests (injectable fake embedder).
+
+**Why.** Rebuild-per-process (#028) re-embeds the whole KB on every start — fine for 38 tests, wasteful as it grows. Content-hash keying makes a stale index IMPOSSIBLE by construction: a changed KB can't map to an old index. Cross-process reuse cuts a warm start to a load. The hash + prune logic is pure and unit-tested; the persist/load is ChromaDB-gated (dev/CI).
+
+**Revisit.** If the cache location must move for deployment (Sprint 8 / HF Spaces), or if a shared/remote vector store replaces the local cache (RC2).
+
+---
 
 ## How to add a decision
 
-One row, four honest answers: what we decided, why, what we gave up, and what would make us
-reconsider. If a decision has no downside listed, we haven't thought hard enough about it.
+One entry, three honest fields: **Decision** (what we chose), **Why** (the
+reasoning and what we gave up), and **Revisit** (what would make us reconsider).
+If a decision has no downside or trigger listed, we haven't thought hard enough
+about it.

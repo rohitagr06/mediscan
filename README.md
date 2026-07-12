@@ -23,20 +23,31 @@ on a curated medical knowledge base.
 
 ## Status
 
-🚧 **RC1 in development** — Sprints 0–7 complete. **One call now turns a
-document into a full analysis:** `analyze_document(path) → AnalysisReport` runs
-the whole pipeline — secure ingestion → PyMuPDF/PaddleOCR extraction → parsing
-(two-sided *and* one-sided ranges) → normalization → sex-aware range resolution
-→ the assessed/acknowledged coverage split → severity → conservative urgency
-roll-up (**zero AI** in any safety decision) → RAG-grounded AI explanations
-(Gemini → GitHub Models → deterministic templates, guardrailed) → a
-deterministic hybrid confidence score. The explanation outputs run concurrently
-with per-output timeouts, the RAG index is persisted, and the whole run emits
-PHI-safe metrics — yet it still produces a complete report when every AI model
-is down. It reads a full-body checkup (CBC, KFT, lipids, glucose/HbA1c, thyroid)
-for both sexes; out-of-scope and sensitive tests are acknowledged but never
-graded. Remaining before RC1: the Gradio UI, the WeasyPrint PDF, and the
-evaluation/deploy pass (Sprint 8).
+🚧 **RC1 in development — Sprints 0–7 complete.**
+
+One call turns a document into a full, validated analysis:
+
+```python
+analyze_document(path) -> AnalysisReport
+```
+
+**The pipeline, end to end:**
+
+secure ingestion → PyMuPDF / PaddleOCR extraction → parsing (two-sided *and*
+one-sided ranges) → normalization → sex-aware range resolution →
+assessed/acknowledged coverage split → severity → conservative urgency roll-up →
+RAG-grounded AI explanations (Gemini → GitHub Models → deterministic templates,
+guardrailed) → a deterministic hybrid confidence score.
+
+**Highlights:**
+
+- **Zero AI in any safety decision** — severity and urgency are pure, auditable rules.
+- AI explanations run **concurrently with per-output timeouts**; the RAG index is **persisted**; every run emits **PHI-safe metrics**.
+- **Degrades gracefully** — a document still becomes a complete report when every AI model is down.
+- Reads a **full-body checkup** (CBC, KFT, lipids, glucose/HbA1c, thyroid) for both sexes; out-of-scope and sensitive tests are acknowledged but never graded.
+
+**Next (Sprint 8 → RC1 live):** Gradio UI · WeasyPrint PDF report · evaluation &
+deploy to Hugging Face Spaces.
 
 ## Quick start
 
