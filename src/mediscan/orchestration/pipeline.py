@@ -38,7 +38,7 @@ from mediscan.extraction.metadata import extract_patient_context
 from mediscan.extraction.parser import parse_lab_text
 from mediscan.medical.coverage import classify_coverage
 from mediscan.medical.urgency import assess_urgency
-from mediscan.observability import get_logger
+from mediscan.observability import configure_logging, get_logger
 from mediscan.rag.retriever import RetrievedSnippet, retrieve
 from mediscan.schemas import (
     AnalysisReport,
@@ -110,8 +110,20 @@ async def analyze_text_async(
 
     # --- deterministic core (no AI) ---------------------------------------
     outcome = parse_lab_text(full_text)
+    # Observability: COUNTS only — never the parsed rows, names, or values.
+    log.debug(
+        "parsed %d rows (%d unparsed)",
+        len(outcome.results),
+        len(outcome.unparsed_lines),
+    )
     context = extract_patient_context(full_text)
     coverage = classify_coverage(outcome, context.sex)
+    log.debug(
+        "coverage: sex=%s assessed=%d acknowledged=%d",
+        context.sex.value,
+        len(coverage.assessed),
+        len(coverage.acknowledged),
+    )
     urgency = assess_urgency(coverage.assessed)
 
     # --- AI explanations (only when there is something graded to explain) --
@@ -163,12 +175,13 @@ async def analyze_text_async(
     # Observability: metrics only, never report text / values (#010).
     log.info(
         "analysis complete: urgency=%s overall_confidence=%.3f fallback=%d "
-        "assessed=%d acknowledged=%d",
+        "assessed=%d acknowledged=%d duration_ms=%.1f",
         urgency.level.value,
         confidence.overall,
         fallback_depth,
         len(coverage.assessed),
         len(coverage.acknowledged),
+        duration_ms,
     )
     return report
 
@@ -191,6 +204,7 @@ def analyze_text(
     event loop for this call, so it must NOT be called from inside a running
     loop (use the async form there).
     """
+    configure_logging()  # this sync call is an RC1 entry point (Sprint 8 UI later)
     return asyncio.run(
         analyze_text_async(
             full_text,
@@ -260,6 +274,7 @@ def analyze_document(
     timeout: float | None = None,
 ) -> AnalysisReport:
     """Synchronous wrapper over analyze_document_async — the file-in entry point."""
+    configure_logging()  # RC1 entry point (Sprint 8 UI will own this later)
     return asyncio.run(
         analyze_document_async(
             path,
