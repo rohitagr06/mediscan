@@ -23,17 +23,20 @@ on a curated medical knowledge base.
 
 ## Status
 
-🚧 **RC1 in development** — Sprints 0–6.5 complete. The full deterministic
-pipeline is built and tested: secure ingestion → PyMuPDF/PaddleOCR extraction →
-parsing (two-sided *and* one-sided ranges) → normalization → sex-aware range
-resolution → severity → conservative urgency roll-up, with **zero AI** in any
-safety decision. On top sit the AI explanation layer (Gemini → GitHub Models →
-deterministic templates, with a guardrail) and RAG grounding (ChromaDB +
-BGE-small over a curated, sourced knowledge base). As of Sprint 6.5 MediScan
-reads a full-body checkup (CBC, KFT, lipids, glucose/HbA1c, thyroid) for both
-sexes; out-of-scope and sensitive tests are acknowledged but never graded.
-Remaining before RC1: confidence scoring & async orchestration (Sprint 7) and
-the Gradio UI + PDF report (Sprint 8).
+🚧 **RC1 in development** — Sprints 0–7 complete. **One call now turns a
+document into a full analysis:** `analyze_document(path) → AnalysisReport` runs
+the whole pipeline — secure ingestion → PyMuPDF/PaddleOCR extraction → parsing
+(two-sided *and* one-sided ranges) → normalization → sex-aware range resolution
+→ the assessed/acknowledged coverage split → severity → conservative urgency
+roll-up (**zero AI** in any safety decision) → RAG-grounded AI explanations
+(Gemini → GitHub Models → deterministic templates, guardrailed) → a
+deterministic hybrid confidence score. The explanation outputs run concurrently
+with per-output timeouts, the RAG index is persisted, and the whole run emits
+PHI-safe metrics — yet it still produces a complete report when every AI model
+is down. It reads a full-body checkup (CBC, KFT, lipids, glucose/HbA1c, thyroid)
+for both sexes; out-of-scope and sensitive tests are acknowledged but never
+graded. Remaining before RC1: the Gradio UI, the WeasyPrint PDF, and the
+evaluation/deploy pass (Sprint 8).
 
 ## Quick start
 

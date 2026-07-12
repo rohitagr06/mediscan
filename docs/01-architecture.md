@@ -2,7 +2,7 @@
 
 *Written for a beginner. Every stage explains **what** it does, **why** it exists, and the key tradeoff behind it.*
 
-> **Implementation status (end of Sprint 6.5):** ingestion & validation,
+> **Implementation status (end of Sprint 7):** ingestion & validation,
 > the router, PyMuPDF + PaddleOCR extraction, the full deterministic
 > medical core (parser, normalization, range resolution with merged KB
 > criticals, severity, urgency), AND the AI explanation layer are BUILT
@@ -27,10 +27,16 @@
 > retrieval into the existing FACTS seam, and `grounding_sources` on
 > every AI explanation — with the medical engine forbidden from
 > importing `rag/`, proven by a boundary test (#028).
-> Still design-only: confidence scoring & async
-> orchestration (Sprint 7), observability (Sprint 7), presentation
-> (Sprint 8). Decisions #011-#030 refined this design.
-> NOTE: no logging/observability exists yet (scheduled for Sprint 7).
+> **Sprint 7 assembled it all into ONE call:** `analyze_document(path) ->
+> AnalysisReport` runs the whole pipeline — deterministic verdict FIRST, then
+> the four AI explanations run CONCURRENTLY (executor + per-output timeouts,
+> #032), then a deterministic hybrid CONFIDENCE blend (#031). It degrades
+> gracefully — a document still becomes a complete report when every AI model
+> is down. Observability is now wired through the pipeline (events/metrics
+> only, never PHI); the RAG index is PERSISTED and hash-keyed (#034); the
+> parser was decomposed into tested recognizers (#033); and CI enforces a 90%
+> coverage gate. Still design-only: presentation — Gradio UI + WeasyPrint PDF +
+> the evaluation/deploy pass (Sprint 8). Decisions #011-#034 refined this design.
 
 ---
 

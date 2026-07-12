@@ -3,7 +3,7 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-10 (Sprint 7 IN PROGRESS — post-6.5 Staff review + hardening done; Sprint 7 planned (docs/15); 7.1 assembly contract locked; 7.2 confidence engine built)
+**Last updated:** 2026-07-10 (Sprint 7 COMPLETE — the orchestrator: one call → a full AnalysisReport, confidence scoring, async concurrent explanations, parser refactor, persisted RAG index, observability, 90% coverage gate. Next: Sprint 8 — UI/PDF/ship.)
 
 ---
 
@@ -26,41 +26,41 @@ between chats, so this file carries it. Read this FIRST every session.*
 
 ---
 
-## ▶ CURRENT SPRINT: Sprint 7 — Confidence, Orchestration & Explainability (IN PROGRESS)
+## ✅ Sprint 7 — Confidence, Orchestration & Explainability (COMPLETE)
 
-*Full plan: `docs/15-sprint-7-plan.md` (14 tasks). Milestone:
+*Full plan: `docs/15-sprint-7-plan.md`. Milestone MET:
 `analyze_document(path) -> AnalysisReport` — one call runs the whole pipeline,
-still complete when AI is down.*
+still complete when every AI model is down.*
 
-**Since the Sprint 6.5 close, this session did:**
+**What Sprint 7 built (all committed):**
 
-- **Staff-level code review** of the repo (only Mediscan is bridge-connected).
-  Verdict: clean, no criticals, no Sprint-7 blockers. Report covered security,
-  docs, architecture, production-readiness.
-- **Post-review hardening (all committed):** new `observability/` logging
-  module (PHI-safe `configure_logging`/`get_logger`) wired into the guardrail +
-  fallback chain; CI now runs coverage + `pip-audit` + a `gitleaks` secret-scan
-  job (+ `gitleaks` pre-commit hook, needs `GITHUB_TOKEN` env — done); Dependabot
-  added; docstring gaps + empty-package scaffolds filled; dead `hello()` removed.
-- **Sprint 7 planned** (docs/15) with Rohit's scope choices: **core + parser
-  refactor + persisted RAG index**, built **sync-first then asyncio**.
-- **7.1 assembly contract LOCKED** (docs/15 Appendix A): explanations stay
-  REPORT-LEVEL (no per-finding); add ONE schema field `AnalysisReport.coverage`
-  (`CoverageResult`) to surface the assessed/acknowledged split; async core +
-  sync wrapper. Pipeline order fixed: deterministic verdict completes BEFORE any
-  AI; only `coverage.assessed` feeds urgency (#006).
-- **7.2 confidence engine BUILT** (`confidence/scoring.py`): pure weighted blend
-  of ocr/extraction/validation/grounding + a fallback-depth penalty (floored);
-  weights in config with a sum-to-1 guard; per-dimension rule helpers. 15 tests.
+- **The orchestrator** (`orchestration/pipeline.py`): `analyze_text` (testable
+  core: text → report, all deps injectable) + `analyze_document` (thin OCR
+  front, lazy imports). Order: parse → sex → `classify_coverage` → urgency
+  (assessed ONLY, #006) → explanations → confidence → assembled `AnalysisReport`.
+  Built SYNC first (7.4/7.5), then made ASYNC: the four explanation outputs run
+  CONCURRENTLY in a thread executor with per-output `wait_for` timeouts and
+  per-output template fallback (#032); public API = async core + sync wrapper.
+- **Confidence engine** (`confidence/scoring.py`, #031): deterministic weighted
+  blend + fallback penalty; weights in config with a sum-to-1 startup guard.
+- **Schema change:** `AnalysisReport.coverage: CoverageResult | None` surfaces
+  the assessed/acknowledged split end to end (7.1 decision A1; explanations stay
+  REPORT-LEVEL, not per-finding).
+- **Explanation assembly** (`ai/explain.py`): `assemble_report_explanations[_async]`
+  selects noteworthy, most-severe-first, capped (`max_explained_findings`) findings.
+- **Add-ons:** parser decomposed into named recognizers, behaviour-preserving
+  (#033); RAG index PERSISTED + hash-keyed with prune + corrupt-cache rebuild (#034).
+- **Observability** wired through the pipeline (stage counts, fallback depth,
+  duration — metrics only, PHI-safe; a test asserts no PHI in any log record).
+- **CI:** 90% coverage gate (`--cov-fail-under=90`; measured baseline 92%).
 
-**Sprint 7 decisions to log at close:** #031 confidence blend; #032
-sync-then-async orchestration (+timeouts/cancellation); #033 composable-
-recognizer parser; #034 persisted hash-keyed RAG index.
+**Decisions logged:** #031 (confidence blend), #032 (sync-then-async orchestration
++ executor timeouts), #033 (composable-recognizer parser), #034 (persisted
+hash-keyed RAG index). Full text in docs/04.
 
-**▶ NEXT: 7.3 — report-level explanation assembly** (gather grounded
-patient/doctor/dietary/specialist across abnormal findings, with provenance +
-grounding_sources, respecting `max_explained_findings`). Then 7.4 sync
-orchestrator (needs the `AnalysisReport.coverage` schema field added).
+**Before Sprint 7 this session also did** a Staff-level code review (clean, no
+criticals) + post-review hardening: the `observability/` module, CI security
+(pip-audit, gitleaks job + hook, Dependabot), docstring/scaffold fills.
 
 ---
 
@@ -82,7 +82,8 @@ deterministic Python; AI only ever *explains* what the rules decided**
 - Full context lives in `docs/`: 00-product-brief, 01-architecture,
   02-repo-structure, 03-sprint-roadmap, 04-decision-log, 05-environment,
   06-reflections, 07-starter-playbook, 08/09/10/11 = sprint plans 2–5,
-  12-understanding-the-codebase, 13-sprint-6-plan, 14-sprint-6.5-plan.
+  12-understanding-the-codebase, 13-sprint-6-plan, 14-sprint-6.5-plan,
+  15-sprint-7-plan.
 
 ## How we work (standing agreements)
 
@@ -115,7 +116,9 @@ deterministic Python; AI only ever *explains* what the rules decided**
 
 ## Current position
 
-**Sprints 0–6.5 are COMPLETE.** Deterministic pipeline: document → read
+**Sprints 0–7 are COMPLETE.** ONE call now runs everything:
+`analyze_document(path) -> AnalysisReport` (orchestration/pipeline.py, #032).
+Deterministic pipeline: document → read
 patient sex → parse (two-sided AND one-sided ranges) → normalize → resolve
 ranges (sex-aware KB fallback, KB criticals merged, #023/#029) → **classify
 coverage (assessed vs acknowledged, #030)** → severity → urgency, zero AI.
@@ -131,8 +134,12 @@ FACTS seam → `grounding_sources` on every AI explanation. The `medical/` engin
 is forbidden from importing `rag/`, proven by an AST boundary test. **Sprint
 6.5 widened the engine from CBC to a full-body checkup (CBC, KFT, lipids,
 glucose/HbA1c, thyroid) for both sexes; out-of-scope and sensitive tests are
-acknowledged but never graded.** Fast suite green (304 in the cloud subset;
-Rohit's Mac also runs the OCR + real-BGE tests).
+acknowledged but never graded.** **Sprint 7 assembled it all into the
+orchestrator, added a deterministic confidence blend (#031), ran the AI
+explanations concurrently with timeouts (#032), decomposed the parser (#033),
+persisted the RAG index (#034), and wired PHI-safe observability.** Suite:
+413 passing on Rohit's Mac (incl. OCR + real-BGE), 92% coverage; CI enforces a
+90% floor.
 
 ## This session's accomplishments (Sprint 6.5)
 
@@ -226,24 +233,25 @@ Rohit's Mac also runs the OCR + real-BGE tests).
    Rohit can add a personal note.)
 3. Minor/nominal: Sprint-0 "break the CI" exercise still open.
 
-No hard blockers for starting Sprint 7.
+No hard blockers for starting Sprint 8.
 
 ## Exact next steps (to resume)
 
-1. Confirm CI is green on GitHub after the Sprint-6.5 commits land.
-2. **Sprint 7 — Confidence, Orchestration & Explainability** is the next
-   sprint: hybrid confidence scoring; async pipeline wiring (concurrency,
-   timeouts, cancellation); the full explanation chain assembled per abnormal
-   finding; wire `CoverageResult` + `ReportExplanations` into `AnalysisReport`
-   (the master object) so one function call produces the whole report. Needs a
-   detailed plan doc (docs/15) before starting, like docs/14 for Sprint 6.5.
-   Also parked FROM this sprint: the composable-recognizer PARSER REFACTOR —
-   the regex grammar accumulated real-report special cases (thousands-commas,
-   method columns, pre-flags) and is near the edge of what one regex should
-   carry.
-3. RC2/parked: honor 429 `retryDelay` in the chain; observability; persisted
-   RAG index if rebuild-per-process gets slow (#028); age-specific ranges
-   (the sex block generalizes to a demographic key, #029).
+1. Confirm CI is green on GitHub after the Sprint-7 commits land (the 90%
+   coverage gate + secret-scan job now run on every push).
+2. **Sprint 8 — UI, PDF & Ship** is the next (final RC1) sprint: a Gradio app
+   (upload → progress → colour-coded results → urgency badge → download); a
+   WeasyPrint professional PDF of the `AnalysisReport`; application-level E2E
+   tests; an evaluation pass (extraction accuracy, hallucination check); deploy
+   to Hugging Face Spaces. Milestone: **RC1 live — a stranger can use it from a
+   URL.** Needs a detailed plan doc (docs/16) before starting, like docs/15.
+   The orchestrator's `analyze_document` is the single entry the UI + PDF both
+   consume. NOTE for deploy: the persisted RAG index cache path (#034,
+   `~/.cache/mediscan`) will need a writable location on HF Spaces.
+3. RC2/parked: native async provider SDK for true timeout cancellation (#032);
+   per-finding explanation chains (needs a schema change; RC1 is report-level);
+   honor 429 `retryDelay` in the chain; age-specific ranges (#029); the
+   full scanner-pipeline parser rewrite if a new format needs it (#033).
 
 **Gemini note:** free tier worked with model `gemini-2.5-flash`
 (gemini-2.0-flash had limit 0). Both keys live in Rohit's .env.

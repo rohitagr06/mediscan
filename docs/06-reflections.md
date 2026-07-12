@@ -289,3 +289,53 @@ range; Free T3/T4 sourcing is the softest (assay-dependent); Hemoglobin's
 critical thresholds are still example-sourced. The KB integrity checks now
 make any policy↔KB drift a loud failure, which is the safety net that lets the
 KB keep growing without silent holes.
+
+## Sprint 7 — Confidence, Orchestration & Explainability (retro)
+
+**The orchestrator was the smallest file in the sprint — because the design
+earned that.** Wiring seven stages into `analyze_document` took barely 70
+lines, and it owns NO medical logic: it just calls each stage and hands the
+typed object to the next. That only worked because every stage was already a
+pure, contract-bound unit (OcrEngine, LLMClient, pure `assess_lab_result`,
+injectable retriever). The conductor being trivial is the dividend of six
+sprints of boundaries — the best evidence the architecture was right.
+
+**Async without rewriting the world.** The report-level design meant the
+concurrency unit was the four OUTPUTS, not per-finding chains. Rather than
+rewrite the whole AI layer to a native async SDK, I ran the existing SYNC
+chain in a thread executor under `asyncio.gather` + `wait_for` (#032). That
+bought real concurrency, per-output timeouts, and graceful fallback for ~30
+lines — and the honest cost (executor threads aren't force-killed on timeout)
+is documented, not hidden. Sync-first then async also kept two lessons apart:
+get the pipeline correct, *then* make it fast.
+
+**Confidence is a blend precisely so it can be honest.** One number would hide
+WHY trust is low. Splitting it into ocr/extraction/validation/grounding with a
+fallback penalty (#031) means a low score points at the stage that caused it —
+and a startup weight-sum check makes a mistyped weight crash rather than
+silently emit a >1 "confidence." Determinism here is the whole point: no AI
+gets to grade its own trustworthiness.
+
+**Two bugs my cloud sandbox structurally could not catch.** Ruff (`B905`
+`zip(strict=)`, `S110` try/except/pass) and the ChromaDB corrupt-cache
+recovery (`'RustBindingsAPI' has no attribute 'bindings'`) all slipped past me
+because the sandbox has neither `ruff` nor `chromadb`. Rohit's pre-commit hooks
+and Mac test run caught every one. The lesson is a workflow one, not a code
+one: when the authoring environment can't run part of the toolchain, the local
+gate IS the test — and the fix for the corrupt-cache bug (clear ChromaDB's
+in-process system cache before rebuilding) was a genuine correctness
+improvement the gated test forced out.
+
+**The parser refactor proved a restraint principle.** The review said "refactor
+the accreting parser"; the disciplined move was to decompose (one tokenizer +
+named recognizers, #033) rather than rewrite the matching strategy, so the
+three real reports could not regress. Retiring a smell is not the same as
+rewriting the thing that works — and behaviour-preservation was provable (35
+tests unchanged).
+
+**Carried forward:** RC1 explanations are report-level; per-finding chains are
+an RC2 enhancement (needs a schema change). Executor threads survive a timeout
+in the background — a native async SDK would fix that (RC2). The persisted
+index cache path will need revisiting for Hugging Face deployment (Sprint 8).
+The #019 KB sourcing review remains the one clinical-use gate. Next stop:
+Sprint 8 — the UI, the PDF, and shipping RC1.

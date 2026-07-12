@@ -24,3 +24,9 @@ tmp/
 
 playground.py
 samples/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml

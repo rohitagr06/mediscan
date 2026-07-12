@@ -91,10 +91,10 @@ Author the curated KB (test explanations, diet notes, specialist mapping) · Chr
 Extend the deterministic engine beyond CBC to a standard full-body checkup (CBC, KFT, lipid profile, glucose/HbA1c, thyroid), for BOTH sexes: the parser learns one-sided ranges (`< 200`, `> 40`, `< 5.7 %`); reference ranges become sex-aware with the patient's sex read from the report (union fallback when absent); an explicit assessment POLICY (kept separate from the medical KB) splits every test into ASSESSED / ACKNOWLEDGED so out-of-scope and sensitive tests are shown but never graded; the multi-panel sourced reference-range + explanation KB grows to 38 tests (the RAG layer from Sprint 6 absorbs it with no code change). Qualitative urine/micro results deferred.
 **Milestone:** MediScan reads a standard full-body checkup report end to end. **DONE** — decisions #029 (sex-aware + one-sided resolution) and #030 (scope tiers + acknowledge-don't-skip); KB integrity checks guard the policy↔KB coupling; a synthetic full-panel fixture (male + female) drives the whole scope-aware pipeline in an end-to-end test, with a scary acknowledged value proven unable to move the verdict (#006).
 
-## Sprint 7 — Confidence, Orchestration & Explainability *(outline)*
+## Sprint 7 — Confidence, Orchestration & Explainability ✅ COMPLETE *(full plan: docs/15)*
 
-Hybrid confidence scoring · async pipeline wiring (concurrency, timeouts, cancellation) · full explanation chain assembly per abnormal finding.
-**Milestone:** the complete `AnalysisReport` produced end-to-end from one function call.
+Hybrid confidence scoring (deterministic weighted blend, #031) · the orchestrator that runs the whole pipeline in one call (`analyze_document`/`analyze_text`), built sync-first then made async (concurrent explanation outputs + timeouts, #032) · report-level explanation assembly (capped, most-severe-first) · `AnalysisReport.coverage` surfacing the assessed/acknowledged split · plus the two review add-ons: the composable-recognizer parser decomposition (#033) and the persisted hash-keyed RAG index (#034) · observability wired through the pipeline (metrics only, PHI-safe) · a 90% CI coverage gate.
+**Milestone:** the complete `AnalysisReport` produced end-to-end from one function call. **DONE** — decisions #031–#034; a document → a full validated report on the Mac, still complete when every AI model is down.
 
 ## Sprint 8 — UI, PDF & Ship *(outline)*
 
