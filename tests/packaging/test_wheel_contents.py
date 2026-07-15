@@ -24,6 +24,10 @@ WHY THIS FILE EXISTS
     sandbox). Runs for real on the Mac and in CI.
 """
 
+# ruff: noqa: S603, S607 - this file intentionally shells out to `uv build`
+# and a python probe with FIXED, non-user-controlled arguments (no shell,
+# list-form subprocess). Scoped here so pyproject's rules stay untouched.
+
 import os
 import shutil
 import subprocess
