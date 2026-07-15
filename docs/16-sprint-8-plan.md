@@ -205,6 +205,23 @@ match the shipped reality and the live URL is in the README.
 - **Deploy gotchas already flagged:** WeasyPrint system libs; writable RAG
   cache path (#034); package-data in the wheel (#019/8.2).
 
+## Appendix — Decisions locked at 8.1 (2026-07-15)
+
+All four forks were confirmed on the recommended path. These are binding for
+Sprint 8 and will be formalized as decisions #035–#037 at 8.12.
+
+| # | Fork | Decision | What it binds |
+|---|---|---|---|
+| 1 | Deploy target | **Hugging Face Spaces** | 8.10 targets a public Space: `app.py` entry + dependency spec + `packages.txt` for system libs. RC1 milestone stays "a stranger opens a URL". |
+| 2 | Public-demo secrets | **Deterministic demo mode by default** | The public Space runs `providers=[]` — no API keys exist on the Space at all. The report is fully deterministic (engine verdict + template explanations). Keyed AI is opt-in for local/private runs via `.env` / Space secrets on a private Space. Zero abuse/cost surface. |
+| 3 | Evaluation set | **Synthetic in CI + real local** | 8.9's eval harness runs on synthetic fixtures in CI, forever repeatable. The real Tata/Lal/Labsmart accuracy check runs per release, LOCALLY on Rohit's Mac, and only aggregate numbers (no report text) enter the docs — #010 fully honored. |
+| 4 | PDF engine | **WeasyPrint** | 8.3 renders HTML → PDF via WeasyPrint; pango/cairo declared in the Space's `packages.txt`. Escape hatch stands: if the Space build fights it, ship print-friendly HTML and log the swap. |
+
+**Consequences carried into later tasks:** 8.7 builds `demo_mode` around
+decision 2 (the default for the public Space); 8.9 splits its harness per
+decision 3; 8.10 needs `packages.txt` (decision 4) + a writable RAG cache path
+(#034) + no secrets in the Space repo (decision 2).
+
 ## Explicitly deferred (RC2, not this sprint)
 
 - Django + PostgreSQL + auth/accounts + saved history (#003).

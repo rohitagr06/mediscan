@@ -3,7 +3,12 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-10 (Sprint 7 COMPLETE — the orchestrator: one call → a full AnalysisReport, confidence scoring, async concurrent explanations, parser refactor, persisted RAG index, observability, 90% coverage gate. Next: Sprint 8 — UI/PDF/ship.)
+**Last updated:** 2026-07-15 (Sprint 8 STARTED — plan in docs/16. Task 8.1 ✅
+DONE: the four deploy forks are LOCKED (HF Spaces · deterministic demo mode,
+`providers=[]`, no keys on the public Space · eval = synthetic in CI + real
+LOCAL per #010 · WeasyPrint with pango/cairo in `packages.txt`) — full table in
+the docs/16 appendix. Next: **8.2 — package the KB as package-data + built-wheel
+test (#019)**.)
 
 ---
 
@@ -237,17 +242,17 @@ No hard blockers for starting Sprint 8.
 
 ## Exact next steps (to resume)
 
-1. Confirm CI is green on GitHub after the Sprint-7 commits land (the 90%
-   coverage gate + secret-scan job now run on every push).
-2. **Sprint 8 — UI, PDF & Ship** is the next (final RC1) sprint: a Gradio app
-   (upload → progress → colour-coded results → urgency badge → download); a
-   WeasyPrint professional PDF of the `AnalysisReport`; application-level E2E
-   tests; an evaluation pass (extraction accuracy, hallucination check); deploy
-   to Hugging Face Spaces. Milestone: **RC1 live — a stranger can use it from a
-   URL.** Needs a detailed plan doc (docs/16) before starting, like docs/15.
-   The orchestrator's `analyze_document` is the single entry the UI + PDF both
-   consume. NOTE for deploy: the persisted RAG index cache path (#034,
-   `~/.cache/mediscan`) will need a writable location on HF Spaces.
+1. **Sprint 8 in progress** (plan: `docs/16-sprint-8-plan.md`; milestone:
+   **RC1 LIVE** on Hugging Face Spaces). 8.1 ✅ done — the four deploy
+   decisions are locked (see the appendix in docs/16). Next task:
+   **8.2 — declare `knowledge_base/**/*.json` as package data in
+   `pyproject.toml` + a built-wheel test** (`uv build`, assert the KB JSON is
+   inside the wheel, per #019) — Rohit core + Claude test (~1.5h).
+   Then 8.3 WeasyPrint PDF → 8.4 render tests → 8.5 Gradio skeleton → 8.6
+   result rendering → 8.7 demo mode + deploy config → 8.8 app E2E → 8.9 eval
+   → 8.10 HF deploy → 8.11 coverage ratchet → 8.12 close (log #035–#037).
+   NOTE for deploy: the persisted RAG index cache path (#034,
+   `~/.cache/mediscan`) needs a writable location on the Space.
 3. RC2/parked: native async provider SDK for true timeout cancellation (#032);
    per-finding explanation chains (needs a schema change; RC1 is report-level);
    honor 429 `retryDelay` in the chain; age-specific ranges (#029); the
