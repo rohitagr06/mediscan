@@ -3,12 +3,15 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-15 (Sprint 8 STARTED — plan in docs/16. Task 8.1 ✅
-DONE: the four deploy forks are LOCKED (HF Spaces · deterministic demo mode,
-`providers=[]`, no keys on the public Space · eval = synthetic in CI + real
-LOCAL per #010 · WeasyPrint with pango/cairo in `packages.txt`) — full table in
-the docs/16 appendix. Next: **8.2 — package the KB as package-data + built-wheel
-test (#019)**.)
+**Last updated:** 2026-07-15 (Sprint 8: 8.1 ✅ + 8.2 ✅. 8.1 locked the four
+deploy forks (HF Spaces · deterministic demo mode `providers=[]` · eval =
+synthetic in CI + real LOCAL per #010 · WeasyPrint) — table in the docs/16
+appendix. 8.2 proved the built wheel ships + loads the KB
+(`tests/packaging/test_wheel_contents.py`; uv_build ships module files by
+default, so no pyproject change was needed). ⚠️ Mid-8.2 a STALE bridge-staged
+`pyproject.toml` clobbered the live one (commit ae4da8c gutted uv.lock);
+recovered in 9cf82ad via `git checkout ae4da8c~1 -- pyproject.toml uv.lock`.
+Suite: 415 passing. Next: **8.3 — WeasyPrint PDF report**.)
 
 ---
 
@@ -107,11 +110,15 @@ deterministic Python; AI only ever *explains* what the rules decided**
 - **Review surface:** Rohit reviews every change via `git diff` on his Mac
   before committing. Claude delivers files via SendUserFile + writes them
   to the Mac via the device bridge.
-- **⚠️ Device-bridge hazard:** staging/reading sometimes serves STALE file
-  copies. Before reviewing/editing Rohit's files, verify against live disk
-  (`device_bash cat` the real file), or read the live tree first. Never
-  overwrite his files from a stale read. (Bit us in Sprint 6: the review
-  copy of `embedding.py` was pre-6.6.)
+- **⚠️ Device-bridge hazard (HARD RULE after the Sprint-8.2 incident):**
+  staging/reading sometimes serves STALE file copies — even a fresh
+  `device_stage_files` call. Before writing back an EDITED version of any
+  existing repo file, Claude MUST first verify the base copy matches live
+  disk (`device_bash cat/sed` the real file, or diff against a known-live
+  version). Never overwrite from an unverified read. (Bit us in Sprint 6:
+  stale `embedding.py`. Bit us HARD in Sprint 8.2: a stale `pyproject.toml`
+  was edited + written back, gutting uv.lock in commit ae4da8c — recovered
+  in 9cf82ad with `git checkout ae4da8c~1 -- pyproject.toml uv.lock`.)
 - **Cloud sandbox limits:** `pymupdf`/`paddleocr`/`chromadb`/`sentence-
   transformers` are NOT installable in the cloud container (PyPI blocked),
   so OCR + real-index tests SKIP/can't run there — they run on Rohit's Mac.
