@@ -68,6 +68,7 @@ def score_confidence(
     validation: float,
     grounding: float,
     fallback_depth: int = 0,
+    parsed_count: int | None = None,
 ) -> ConfidenceBreakdown:
     """Blend the four per-stage scores into a ConfidenceBreakdown.
 
@@ -77,6 +78,11 @@ def score_confidence(
             extraction/validation/grounding from raw pipeline facts.)
         fallback_depth: how deep the AI fallback chain went (0 = the primary
             model answered, 1 = second rung, ...). Higher -> more penalty.
+        parsed_count: how many lab rows were actually parsed from the
+            document. When this is 0, the analysis has NO content — the stages
+            each "succeeded" on nothing — so ``overall`` collapses to 0.0
+            rather than reporting a misleading high number. ``None`` (the
+            default) means "not supplied", and the blend behaves as before.
 
     Returns:
         A ConfidenceBreakdown carrying the four inputs unchanged plus a
@@ -98,6 +104,11 @@ def score_confidence(
         1.0 - settings.confidence_fallback_k * fallback_depth,
     )
     overall = weighted * penalty
+
+    # Nothing parsed => nothing to trust. A report that read ZERO values must
+    # never present as confident, however cleanly each empty stage "passed".
+    if parsed_count == 0:
+        overall = 0.0
 
     return ConfidenceBreakdown(
         ocr=ocr,

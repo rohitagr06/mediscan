@@ -148,6 +148,9 @@ async def analyze_text_async(
         validation=1.0,
         grounding=grounding,
         fallback_depth=fallback_depth,
+        # 0 parsed rows => overall confidence collapses to 0 (a report that
+        # read nothing must never look confident). See score_confidence.
+        parsed_count=len(outcome.results),
     )
 
     duration_ms = (time.perf_counter() - started) * 1000.0

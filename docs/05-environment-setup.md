@@ -112,3 +112,34 @@ test that touches configuration.
 
 **First `pre-commit` run is very slow.**
 It downloads and caches each hook's tooling once. Subsequent runs take a second or two.
+
+## PDF export (WeasyPrint) — system libraries
+
+Sprint 8 added a downloadable PDF report, rendered by **WeasyPrint**. WeasyPrint
+is a Python package (installed by `uv sync`), but it wraps C libraries
+(**pango**, **cairo**) that are NOT Python and must be installed at the OS level.
+
+**macOS (Homebrew):**
+
+```bash
+brew install pango
+```
+
+On Apple Silicon, Homebrew installs libraries under `/opt/homebrew/lib`, which
+macOS's dynamic loader does not search by default — so WeasyPrint fails to find
+`libgobject`/`libpango` even after `brew install`. Point the loader at it once,
+permanently, by adding this line to your `~/.zshrc`:
+
+```bash
+echo 'export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib' >> ~/.zshrc
+source ~/.zshrc
+```
+
+After this, every new terminal can render PDFs; `uv run pytest tests/unit/reports/`
+should show all tests passing (0 skipped). Without the libraries the PDF tests
+SKIP (they never fail the suite) and the app still shows the on-screen analysis —
+only the PDF download is withheld.
+
+**Linux / Hugging Face Spaces:** the libraries install to standard system paths
+the loader already searches, so no `DYLD_*` variable is needed. On the deployed
+Space they come from `packages.txt` (see the Sprint 8 deploy task).
