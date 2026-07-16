@@ -37,15 +37,39 @@ read'), a wrong value never is. Precision held at **0 false positives**
 throughout — the noise case (real boilerplate + pregnancy table + marketing)
 parses to zero.
 
+## Grounding & confidence sanity (8.9b)
+
+`python -m mediscan.evaluation` now also prints a grounding report from
+`evaluation/grounding.py` — two pure, offline audits over a finished
+AnalysisReport:
+
+- **Hallucination** — the deterministic verdict is ground truth (#006), so the
+  patient/doctor narratives must not introduce a NUMBER or a lab TEST NAME the
+  results don't support. `find_ungrounded_numbers` flags any figure outside the
+  grounded set (lab values, range bounds, structural counts); the diet/lifestyle
+  notes are intentionally exempt (they carry non-lab quantities).
+  `find_ungrounded_test_names` flags a policy test named in the narrative but
+  absent from the report — conservative (word-boundary, and it skips a name that
+  is a word inside a grounded name, e.g. "Urea" in "Blood Urea Nitrogen").
+- **Confidence sanity** — `check_confidence_sanity`: every score in [0, 1]; zero
+  parsed rows => zero overall (also locked by `test_scoring_empty`); overall
+  never exceeds its own best component.
+
+Proven with two synthetic cases: a faithful deterministic report (audits clean)
+and a tampered copy that injects `999.0` and "PSA" (both caught).
+
+## Grading / scope calibration (8.9, done)
+
+The urgency-inflation issue is fixed in two layers. (1) Seven low-actionability
+CBC indices (MCHC, RDW-CV, MPV, PDW, Absolute Mono/Eos/Baso Count) moved from
+Tier A to Tier B — acknowledged, not graded — while Absolute NEUTROPHIL Count
+stays graded (a low ANC is a real emergency). (2) The severity engine now caps
+any UNSOURCED band (no cited critical threshold) at MODERATE / "Consult Soon":
+URGENT/IMMEDIATE requires a real, sourced critical line (#034). Verified on the
+real Tata report — the verdict drops from "Urgent" to "Consult a doctor soon".
+
 ## Still to do in this evaluation pass
 
-- **Real-report accuracy** — run the app locally on the real Tata / Lal PathLabs
-  / Labsmart PDFs; record only aggregate recall numbers here (never text, #010).
-- **Hallucination + confidence sanity** — every AI output grounded or
-  guardrailed; degraded input scores lower (confidence-on-zero already covered
-  by `test_scoring_empty`).
-- **Grading / scope review (#030 / #019)** — the urgency-inflation issue: minor
-  indices (PDW, Absolute Basophil Count) graded "Highly abnormal" push the
-  verdict to "Urgent". A careful per-test `AssessmentPolicy` review, never a
-  blanket change (Absolute Neutrophil Count lives in the same bucket, where a
-  low value is a real emergency).
+- **Real-report accuracy (8.9c)** — run the app locally on the real Tata / Lal
+  PathLabs / Labsmart PDFs; record only aggregate recall numbers here (never
+  text, #010).
