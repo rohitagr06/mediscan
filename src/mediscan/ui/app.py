@@ -57,7 +57,9 @@ def _providers_for(demo_mode: bool) -> list:
     missing key simply drops that rung, so a half-configured environment
     degrades instead of crashing (#004 chain order preserved).
     """
-    if demo_mode:
+    # settings.demo_mode is a HARD override for public deployments: when
+    # set, no providers are built whatever the UI toggle says.
+    if demo_mode or settings.demo_mode:
         return []
     providers: list = []
     if settings.gemini_api_key is not None:
@@ -177,7 +179,10 @@ def build_app():
                 )
                 demo_toggle = gr.Checkbox(
                     label="Demo mode (deterministic, no AI keys needed)",
-                    value=True,
+                    value=settings.demo_mode,
+                    # Locked ON when the deployment forces demo mode (a
+                    # public Space) so it cannot be toggled into a keyed run.
+                    interactive=not settings.demo_mode,
                 )
                 run = gr.Button("Analyze", variant="primary")
                 pdf_out = gr.File(label="Download PDF report")

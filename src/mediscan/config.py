@@ -35,6 +35,14 @@ class Settings(BaseSettings):
 
     debug: bool = False
 
+    # DETERMINISTIC DEMO MODE. When True, NO AI providers are ever used —
+    # whatever keys may be present — so the report is fully deterministic
+    # (engine verdict + template explanations). The safe default for a
+    # PUBLIC deployment (Hugging Face Spaces): no keys, no per-click cost,
+    # no abuse surface, still a complete report. Set MEDISCAN_DEMO_MODE=1 on
+    # the public Space; locally it defaults False so keyed AI is available.
+    demo_mode: bool = False
+
     # Standard logging verbosity, restricted to the valid set.
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 

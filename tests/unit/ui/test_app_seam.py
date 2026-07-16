@@ -96,3 +96,13 @@ def test_keyed_mode_skips_providers_without_keys(monkeypatch):
     monkeypatch.setattr(ui_app.settings, "gemini_api_key", None)
     monkeypatch.setattr(ui_app.settings, "github_models_token", None)
     assert ui_app._providers_for(demo_mode=False) == []
+
+
+def test_settings_demo_mode_forces_no_providers(monkeypatch):
+    # Even with a key present and the UI toggle OFF, settings.demo_mode wins
+    # (the public-Space hard override).
+    from pydantic import SecretStr
+
+    monkeypatch.setattr(ui_app.settings, "demo_mode", True)
+    monkeypatch.setattr(ui_app.settings, "gemini_api_key", SecretStr("test-key"))
+    assert ui_app._providers_for(demo_mode=False) == []

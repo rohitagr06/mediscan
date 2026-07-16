@@ -20,6 +20,7 @@ WHY THIS FILE EXISTS
 import hashlib
 import json
 import shutil
+import tempfile
 import uuid
 from functools import cache
 from pathlib import Path
@@ -146,6 +147,27 @@ def _populate(collection) -> None:
         )
 
 
+def _resolve_cache_root(cache_dir: str | Path | None) -> Path:
+    """Return a WRITABLE directory for the persisted index.
+
+    Uses the configured path (``cache_dir`` or settings), but if that path
+    can't be created or written — e.g. a read-only Hugging Face Spaces
+    filesystem — falls back to an ephemeral temp dir so the index still
+    builds instead of crashing the app on startup.
+    """
+    root = Path(cache_dir or settings.rag_index_cache_dir).expanduser()
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+        probe = root / ".write_test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+        return root
+    except OSError:
+        fallback = Path(tempfile.gettempdir()) / "mediscan_rag_index"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
 def build_persistent_index(embedding_function, *, cache_dir: str | Path | None = None):
     """Build-or-load the persistent KB index, keyed by a hash of the KB files.
 
@@ -159,7 +181,7 @@ def build_persistent_index(embedding_function, *, cache_dir: str | Path | None =
     """
     import chromadb
 
-    cache_root = Path(cache_dir or settings.rag_index_cache_dir).expanduser()
+    cache_root = _resolve_cache_root(cache_dir)
     kb_hash = _hash_kb()
     index_dir = cache_root / kb_hash
 
