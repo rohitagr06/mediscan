@@ -59,6 +59,7 @@ from mediscan.schemas.report import DEFAULT_DISCLAIMER, AnalysisReport
 from mediscan.schemas.summaries import (
     DietaryConsideration,
     DoctorSummary,
+    LifestyleConsideration,
     PatientSummary,
     SpecialistSuggestion,
 )
@@ -75,6 +76,7 @@ __all__ = [
     "ConfidenceBreakdown",
     "CoverageResult",
     "DietaryConsideration",
+    "LifestyleConsideration",
     "DoctorSummary",
     "DocumentType",
     "ExplanationProvenance",

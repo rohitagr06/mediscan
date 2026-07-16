@@ -68,6 +68,31 @@ class DietaryConsideration(MediScanModel):
     )
 
 
+class LifestyleConsideration(MediScanModel):
+    """One informational-only lifestyle / daily-habit note.
+
+    Same constitutional guarantee as DietaryConsideration: ``informational_only``
+    is ``Literal[True]``, so a lifestyle note can never present itself as
+    medical advice. Covers everyday habits — activity, sleep, stress, hydration.
+    """
+
+    suggestion: str = Field(
+        min_length=1,
+        description="Informational lifestyle or daily-habit consideration.",
+    )
+    rationale: str | None = Field(
+        default=None,
+        description="Grounded explanation of why this consideration is relevant.",
+    )
+    informational_only: Literal[True] = Field(
+        default=True,
+        description=(
+            "Constitutional guarantee: lifestyle content is informational only, "
+            "never medical advice. This field cannot be set to False."
+        ),
+    )
+
+
 class SpecialistSuggestion(MediScanModel):
     """A suggested category of doctor to consult — always with a reason.
 

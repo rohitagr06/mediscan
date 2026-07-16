@@ -59,8 +59,8 @@ def _explanation_signals(explanations) -> tuple[float, int, list[str]]:
     - grounding: fraction of AI outputs that carried KB sources. No AI outputs
       (all-deterministic, or none produced) -> 1.0: nothing ungrounded was
       asserted, the verdict stands on rules.
-    - fallback_depth: how many of the four outputs fell back to the
-      deterministic template (0 = AI answered all, 4 = full AI outage). Feeds
+    - fallback_depth: how many of the five outputs fell back to the
+      deterministic template (0 = AI answered all, 5 = full AI outage). Feeds
       both the confidence penalty and metadata.fallback_count.
     - models_used: the distinct AI models that actually answered, in order.
     """
@@ -71,6 +71,7 @@ def _explanation_signals(explanations) -> tuple[float, int, list[str]]:
         explanations.patient,
         explanations.doctor,
         explanations.dietary,
+        explanations.lifestyle,
         explanations.specialist,
     ]
     ai_outputs = [o for o in outputs if o.provenance.source is ExplanationSource.AI]
@@ -168,6 +169,9 @@ async def analyze_text_async(
         patient_summary=explanations.patient.content if explanations else None,
         doctor_summary=explanations.doctor.content if explanations else None,
         dietary_considerations=(explanations.dietary.content if explanations else []),
+        lifestyle_considerations=(
+            explanations.lifestyle.content if explanations else []
+        ),
         specialist_suggestions=(
             explanations.specialist.content if explanations else []
         ),

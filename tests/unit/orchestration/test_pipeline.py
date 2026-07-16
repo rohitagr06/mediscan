@@ -51,8 +51,8 @@ def test_acknowledged_tests_are_surfaced_but_never_move_urgency():
 
 def test_deterministic_path_confidence_reflects_full_fallback():
     report = _run(MALE_REPORT)
-    # providers=[] -> all four explanations fell back to templates
-    assert report.metadata.fallback_count == 4
+    # providers=[] -> all five explanations fell back to templates
+    assert report.metadata.fallback_count == 5
     assert report.metadata.models_used == []  # no AI model answered
     # grounding stays high (no AI outputs to be ungrounded), but the fallback
     # penalty pulls overall below a perfect 1.0

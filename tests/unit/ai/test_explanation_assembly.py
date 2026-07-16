@@ -84,8 +84,14 @@ def test_assemble_grounds_only_noteworthy_and_returns_four_outputs():
         assessments, urgency, providers=[], retrieve_fn=spy_retrieve
     )
 
-    # all four outputs exist and came from the deterministic floor
-    for out in (result.patient, result.doctor, result.dietary, result.specialist):
+    # all five outputs exist and came from the deterministic floor
+    for out in (
+        result.patient,
+        result.doctor,
+        result.dietary,
+        result.lifestyle,
+        result.specialist,
+    ):
         assert out.provenance.source is ExplanationSource.DETERMINISTIC
 
     # grounding was queried ONLY for the two abnormal findings, never the normal

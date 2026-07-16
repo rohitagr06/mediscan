@@ -84,20 +84,20 @@ def _run(providers, **kw):
 
 def test_per_output_timeout_falls_back_to_template(monkeypatch):
     monkeypatch.setattr(settings, "llm_max_retries", 0)
-    # each output would take 0.1s, but the timeout fires at 0.01s -> all four
+    # each output would take 0.1s, but the timeout fires at 0.01s -> all five
     # degrade to deterministic templates, and the report is still complete.
     report = _run([_SlowOkLLM(0.1)], timeout=0.01)
-    assert report.metadata.fallback_count == 4
+    assert report.metadata.fallback_count == 5
     assert report.patient_summary is not None
     assert report.urgency is not None
 
 
 def test_one_set_fails_while_the_other_succeeds(monkeypatch):
     monkeypatch.setattr(settings, "llm_max_retries", 0)
-    # patient + doctor validate ("ok"); dietary + specialist need a LIST and
-    # fail -> exactly two fall back, and the successes are unaffected.
+    # patient + doctor validate ("ok"); dietary + lifestyle + specialist need
+    # a LIST and fail -> exactly three fall back; successes are unaffected.
     report = _run([_OkTextLLM()])
-    assert report.metadata.fallback_count == 2
+    assert report.metadata.fallback_count == 3
     assert report.patient_summary.text == "ok"
     assert report.doctor_summary.text == "ok"
     assert "ok-1" in report.metadata.models_used
@@ -110,15 +110,15 @@ def test_outputs_run_concurrently_not_sequentially(monkeypatch):
     report = _run([_SlowFailLLM(delay)])
     elapsed = time.perf_counter() - start
 
-    assert report.metadata.fallback_count == 4  # all failed -> deterministic
-    # four × delay run concurrently should finish in ~one delay, well under the
-    # sequential sum (4 × delay). A generous bound keeps it non-flaky.
-    assert elapsed < 4 * delay * 0.75
+    assert report.metadata.fallback_count == 5  # all failed -> deterministic
+    # five × delay run concurrently should finish in ~one delay, well under the
+    # sequential sum (5 × delay). A generous bound keeps it non-flaky.
+    assert elapsed < 5 * delay * 0.75
 
 
 def test_total_provider_failure_still_completes_deterministically(monkeypatch):
     monkeypatch.setattr(settings, "llm_max_retries", 0)
     report = _run([_FailLLM()])
-    assert report.metadata.fallback_count == 4
+    assert report.metadata.fallback_count == 5
     assert report.metadata.models_used == []
     assert report.patient_summary is not None  # deterministic, never blank

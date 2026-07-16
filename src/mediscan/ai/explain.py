@@ -22,6 +22,7 @@ from mediscan.ai.exceptions import LLMError
 from mediscan.ai.prompts import (
     DietPrompt,
     DoctorSummaryPrompt,
+    LifestylePrompt,
     PatientSummaryPrompt,
     PromptTemplate,
     SpecialistPrompt,
@@ -58,6 +59,7 @@ class ReportExplanations(NamedTuple):
     patient: Explanation
     doctor: Explanation
     dietary: Explanation
+    lifestyle: Explanation
     specialist: Explanation
 
 
@@ -326,6 +328,12 @@ def _output_specs(
             DietPrompt(),
             True,
             lambda: templates.dietary(assessments, urgency),
+        ),
+        _OutputSpec(
+            "lifestyle",
+            LifestylePrompt(),
+            True,
+            lambda: templates.lifestyle(assessments, urgency),
         ),
         _OutputSpec(
             "specialist",

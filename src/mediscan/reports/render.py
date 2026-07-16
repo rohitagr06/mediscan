@@ -261,21 +261,56 @@ def _summary_sections(report: AnalysisReport) -> str:
     return "".join(parts)
 
 
-def _extras_sections(report: AnalysisReport) -> str:
-    parts: list[str] = []
-    if report.dietary_considerations:
-        items = [
-            d.suggestion + (f" ({d.rationale})" if d.rationale else "")
-            for d in report.dietary_considerations
-        ]
-        parts.append(
-            "<h2>Dietary considerations (informational only)</h2>"
-            f"{_bullet_list(items)}"
-        )
-    if report.specialist_suggestions:
-        items = [f"{s.specialty}: {s.reason}" for s in report.specialist_suggestions]
-        parts.append(f"<h2>Specialists you could ask about</h2>{_bullet_list(items)}")
-    return "".join(parts)
+def _diet_section(report: AnalysisReport) -> str:
+    if not report.dietary_considerations:
+        return ""
+    items = [
+        d.suggestion + (f" ({d.rationale})" if d.rationale else "")
+        for d in report.dietary_considerations
+    ]
+    return (
+        "<h2>Diet (informational only)</h2>"
+        '<div class="note">Food and eating suggestions — informational only, '
+        "not medical or nutritional advice.</div>"
+        f"{_bullet_list(items)}"
+    )
+
+
+def _lifestyle_section(report: AnalysisReport) -> str:
+    if not report.lifestyle_considerations:
+        return ""
+    items = [
+        s.suggestion + (f" ({s.rationale})" if s.rationale else "")
+        for s in report.lifestyle_considerations
+    ]
+    return (
+        "<h2>Lifestyle (informational only)</h2>"
+        '<div class="note">Everyday-habit suggestions (activity, sleep, '
+        "stress, hydration) — informational only.</div>"
+        f"{_bullet_list(items)}"
+    )
+
+
+def _diet_lifestyle_summary(report: AnalysisReport) -> str:
+    diet = report.dietary_considerations
+    life = report.lifestyle_considerations
+    if not diet and not life:
+        return ""
+    bullets = [d.suggestion for d in diet] + [s.suggestion for s in life]
+    return (
+        "<h2>Diet &amp; lifestyle summary</h2>"
+        '<div class="note">A quick recap of the informational diet and '
+        "lifestyle points above — always discuss any changes with your "
+        "doctor.</div>"
+        f"{_bullet_list(bullets)}"
+    )
+
+
+def _specialist_section(report: AnalysisReport) -> str:
+    if not report.specialist_suggestions:
+        return ""
+    items = [f"{s.specialty}: {s.reason}" for s in report.specialist_suggestions]
+    return f"<h2>Specialists you could ask about</h2>{_bullet_list(items)}"
 
 
 def _confidence_section(report: AnalysisReport) -> str:
@@ -329,7 +364,10 @@ def render_html(report: AnalysisReport) -> str:
         + _summary_sections(report)
         + _findings_section(report)
         + _acknowledged_section(report)
-        + _extras_sections(report)
+        + _diet_section(report)
+        + _lifestyle_section(report)
+        + _diet_lifestyle_summary(report)
+        + _specialist_section(report)
         + _confidence_section(report)
         + _unparsed_section(report)
         + _disclaimer_section(report)

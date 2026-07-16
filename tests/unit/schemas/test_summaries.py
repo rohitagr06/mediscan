@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from mediscan.schemas import (
     DietaryConsideration,
     DoctorSummary,
+    LifestyleConsideration,
     PatientSummary,
     SpecialistSuggestion,
 )
@@ -36,6 +37,16 @@ def test_informational_only_cannot_be_disabled():
     # Constitutional guarantee: this object cannot exist with False
     with pytest.raises(ValidationError):
         DietaryConsideration(suggestion="x", informational_only=False)
+
+
+def test_lifestyle_consideration_is_informational_only():
+    life = LifestyleConsideration(
+        suggestion="A brisk daily walk is often discussed for heart health."
+    )
+    assert life.informational_only is True
+    # Same constitutional guarantee as dietary: cannot be disabled.
+    with pytest.raises(ValidationError):
+        LifestyleConsideration(suggestion="x", informational_only=False)
 
 
 def test_specialist_requires_reason():

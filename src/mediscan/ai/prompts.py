@@ -15,6 +15,7 @@ WHY THIS FILE EXISTS
 from mediscan.schemas import (
     DietaryConsideration,
     DoctorSummary,
+    LifestyleConsideration,
     LLMRequest,
     PatientSummary,
     SpecialistSuggestion,
@@ -104,11 +105,33 @@ class DietPrompt(PromptTemplate):
     version = 1
     output_schema = DietaryConsideration
     user_template = (
-        "Give general, informational dietary/lifestyle considerations related "
-        "to these findings — never medical advice.\n"
+        "Give general, informational DIET considerations related to these "
+        "findings — never medical advice, never prescriptive.\n"
+        "For each relevant finding, name concrete example foods to favour "
+        "and to limit, and include Indian options (both vegetarian and "
+        "non-vegetarian) where it makes sense. Keep every item general "
+        "(e.g. 'often discussed', 'many people').\n"
         "{facts_block}\n"
-        'Return a JSON list; each item has "suggestion" and optional '
-        '"rationale".'
+        'Return a JSON list; each item has "suggestion" (food guidance, may '
+        'name example foods) and optional "rationale".'
+    )
+
+
+class LifestylePrompt(PromptTemplate):
+    """General, informational lifestyle/daily-habit considerations (never advice)."""
+
+    name = "lifestyle"
+    version = 1
+    output_schema = LifestyleConsideration
+    user_template = (
+        "Give general, informational LIFESTYLE considerations related to these "
+        "findings — daily habits only (physical activity, sleep, stress, "
+        "hydration, weight), never medical advice, never prescriptive.\n"
+        "Keep it general and encouraging (e.g. 'a brisk daily walk is often "
+        "discussed for heart health', 'good sleep and stress management are "
+        "commonly suggested').\n"
+        "{facts_block}\n"
+        'Return a JSON list; each item has "suggestion" and optional "rationale".'
     )
 
 

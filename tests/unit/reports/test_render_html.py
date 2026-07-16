@@ -14,6 +14,10 @@ from mediscan.reports.render import render_html
 from mediscan.schemas.coverage import CoverageResult
 from mediscan.schemas.labs import LabResult, ReferenceRange, Severity
 from mediscan.schemas.report import AnalysisReport
+from mediscan.schemas.summaries import (
+    DietaryConsideration,
+    LifestyleConsideration,
+)
 
 # ---------------------------------------------------------------------------
 # Required sections
@@ -93,6 +97,23 @@ def test_unparsed_lines_are_collapsed(full_report):
     html = render_html(full_report)
     assert "<details>" in html
     assert "unparsed line" in html
+
+
+def test_diet_and_lifestyle_sections_render():
+    report = AnalysisReport(
+        dietary_considerations=[
+            DietaryConsideration(suggestion="Favour fibre-rich foods.")
+        ],
+        lifestyle_considerations=[
+            LifestyleConsideration(suggestion="A brisk daily walk is often discussed.")
+        ],
+    )
+    html = render_html(report)
+    assert "Diet (informational only)" in html
+    assert "Lifestyle (informational only)" in html
+    assert "Diet &amp; lifestyle summary" in html
+    assert "brisk daily walk" in html
+    assert "fibre-rich" in html
 
 
 def test_malicious_test_name_is_escaped(assessment_factory):

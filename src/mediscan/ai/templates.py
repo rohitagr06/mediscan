@@ -15,6 +15,7 @@ from mediscan.medical.phrasing import describe_finding
 from mediscan.schemas import (
     DietaryConsideration,
     DoctorSummary,
+    LifestyleConsideration,
     PatientSummary,
     Severity,
     SpecialistSuggestion,
@@ -117,6 +118,28 @@ def dietary(
                 "with your doctor."
             ),
             rationale="Automatic fallback provides no test-specific dietary advice.",
+        )
+    ]
+
+
+def lifestyle(
+    assessments: list[SeverityAssessment], urgency: UrgencyAssessment
+) -> list[LifestyleConsideration]:
+    """Generic, informational lifestyle note from the verdict, no AI.
+
+    No per-test lifestyle knowledge base yet (RC2), so the deterministic
+    floor stays deliberately generic and safe.
+    """
+    return [
+        LifestyleConsideration(
+            suggestion=(
+                "General lifestyle habits — regular physical activity, good "
+                "sleep, stress management and staying hydrated — are best "
+                "discussed with your doctor."
+            ),
+            rationale=(
+                "Automatic fallback provides no test-specific lifestyle advice."
+            ),
         )
     ]
 

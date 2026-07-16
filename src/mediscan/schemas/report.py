@@ -23,6 +23,7 @@ from mediscan.schemas.labs import LabResult
 from mediscan.schemas.summaries import (
     DietaryConsideration,
     DoctorSummary,
+    LifestyleConsideration,
     PatientSummary,
     SpecialistSuggestion,
 )
@@ -64,6 +65,10 @@ class AnalysisReport(MediScanModel):
     dietary_considerations: list[DietaryConsideration] = Field(
         default_factory=list,
         description="Informational-only dietary and lifestyle considerations.",
+    )
+    lifestyle_considerations: list[LifestyleConsideration] = Field(
+        default_factory=list,
+        description="Informational-only lifestyle / daily-habit considerations.",
     )
     specialist_suggestions: list[SpecialistSuggestion] = Field(
         default_factory=list,

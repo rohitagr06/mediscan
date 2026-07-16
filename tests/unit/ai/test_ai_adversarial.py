@@ -122,8 +122,10 @@ class SmartFake(LLMClient):
         u = request.user_prompt.lower()
         if "physician" in u:
             text = '{"text": "Mild anemia pattern.", "clinical_notes": ["Hb 9.8"]}'
-        elif "dietary" in u:
+        elif "diet" in u:
             text = '[{"suggestion": "Iron-rich foods may be discussed."}]'
+        elif "lifestyle" in u:
+            text = '[{"suggestion": "A brisk daily walk is often discussed."}]'
         elif "specialist" in u:
             text = '[{"specialty": "Hematologist", "reason": "Low hemoglobin."}]'
         else:  # patient
@@ -200,7 +202,7 @@ def test_report_is_complete_even_when_all_providers_die():
     r = explain_report(
         a, u, [DeadLLM(), DeadLLM()], now=lambda: FIXED_NOW, retrieve_fn=_no_grounding
     )
-    for e in (r.patient, r.doctor, r.dietary, r.specialist):
+    for e in (r.patient, r.doctor, r.dietary, r.lifestyle, r.specialist):
         assert e.content is not None
         assert e.provenance.source is ExplanationSource.DETERMINISTIC
         assert e.provenance.timestamp == FIXED_NOW
@@ -211,7 +213,7 @@ def test_ai_success_is_tagged_ai_with_provider():
     r = explain_report(
         a, u, [SmartFake()], now=lambda: FIXED_NOW, retrieve_fn=_no_grounding
     )
-    for e in (r.patient, r.doctor, r.dietary, r.specialist):
+    for e in (r.patient, r.doctor, r.dietary, r.lifestyle, r.specialist):
         assert e.provenance.source is ExplanationSource.AI
         assert e.provenance.provider == "smart"
     assert r.patient.provenance.prompt_name == "patient_summary"
