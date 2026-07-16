@@ -41,8 +41,6 @@ _POLICY_DATA: list[tuple[str, AssessmentTier, AcknowledgeClass]] = [
     ("MCV", _A, _NUM),
     ("RBC Count", _A, _NUM),
     ("MCH", _A, _NUM),
-    ("MCHC", _A, _NUM),
-    ("RDW-CV", _A, _NUM),
     ("Neutrophils", _A, _NUM),
     ("Lymphocytes", _A, _NUM),
     ("Monocytes", _A, _NUM),
@@ -50,11 +48,6 @@ _POLICY_DATA: list[tuple[str, AssessmentTier, AcknowledgeClass]] = [
     ("Basophils", _A, _NUM),
     ("Absolute Neutrophil Count", _A, _NUM),
     ("Absolute Lymphocyte Count", _A, _NUM),
-    ("Absolute Monocyte Count", _A, _NUM),
-    ("Absolute Eosinophil Count", _A, _NUM),
-    ("Absolute Basophil Count", _A, _NUM),
-    ("MPV", _A, _NUM),
-    ("PDW", _A, _NUM),
     ("ESR", _A, _NUM),
     ("Total Cholesterol", _A, _NUM),
     ("Triglycerides", _A, _NUM),
@@ -91,6 +84,18 @@ _POLICY_DATA: list[tuple[str, AssessmentTier, AcknowledgeClass]] = [
     ("Estradiol", _C, _SEN),
     ("Prolactin", _C, _SEN),
     ("Cortisol", _C, _SEN),
+    # --- Tier B (8.9 scope review): low-actionability indices moved OUT of
+    # graded so a trivial deviation can't inflate urgency to 'Urgent'. Shown
+    # ACKNOWLEDGED with the report's own range, never graded; KB entries kept
+    # for possible RC2 grading. Absolute NEUTROPHIL Count deliberately STAYS
+    # Tier A (low ANC = neutropenia = a real emergency). ---
+    ("MCHC", _B, _NUM),
+    ("RDW-CV", _B, _NUM),
+    ("MPV", _B, _NUM),
+    ("PDW", _B, _NUM),
+    ("Absolute Monocyte Count", _B, _NUM),
+    ("Absolute Eosinophil Count", _B, _NUM),
+    ("Absolute Basophil Count", _B, _NUM),
     # --- Tier B: DEFERRED numeric (acknowledged, not graded in RC1) ---
     ("hs-CRP", _B, _NUM),
     ("Homocysteine", _B, _NUM),

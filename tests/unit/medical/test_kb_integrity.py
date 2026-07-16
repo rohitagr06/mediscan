@@ -110,20 +110,24 @@ def test_every_assessable_test_has_a_knowledge_entry() -> None:
 
 
 def test_no_orphan_reference_range() -> None:
-    # A reference-range entry for a test the policy never grades is dead data.
+    # A reference-range entry for a test NO policy row references (any tier)
+    # is dead data. A Tier-B (deferred) test may keep its range for RC2, so
+    # the check is against the whole policy table, not just Tier A.
     ranges = set(load_reference_ranges())
-    orphans = sorted(ranges - assessable_test_names())
+    orphans = sorted(ranges - policy_test_names())
     assert not orphans, (
-        f"reference-range entries with no Tier-A policy row (unreachable): "
+        f"reference-range entries with no policy row at all (unreachable): "
         f"{orphans}"
     )
 
 
 def test_no_orphan_knowledge_entry() -> None:
+    # Orphan = a knowledge entry NO policy row references (any tier); a
+    # Tier-B deferred test may keep its knowledge entry for RC2.
     knowledge = set(_knowledge_names())
-    orphans = sorted(knowledge - assessable_test_names())
+    orphans = sorted(knowledge - policy_test_names())
     assert not orphans, (
-        f"test-knowledge entries with no Tier-A policy row (unreachable): " f"{orphans}"
+        f"test-knowledge entries with no policy row at all (unreachable): " f"{orphans}"
     )
 
 

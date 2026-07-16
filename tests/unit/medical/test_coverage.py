@@ -37,6 +37,41 @@ def test_policy_tiers_and_assessable_flag():
     assert policy_for("Nonexistent Test") is None
 
 
+# --- 8.9 scope review: low-actionability indices are acknowledged, not graded ---
+
+
+def test_low_actionability_indices_are_deferred_not_graded():
+    # Scope decision (Sprint 8.9): these CBC indices are technically parsed and
+    # flagged by the lab, but a trivial deviation on any of them is not, on its
+    # own, clinically actionable — grading them inflated the urgency verdict to
+    # "Urgent" on ordinary reports. They move to Tier B (DEFERRED): still shown
+    # and acknowledged, never fed to the urgency engine. This test LOCKS that
+    # decision so a future edit can't silently re-grade them.
+    for name in [
+        "MCHC",
+        "RDW-CV",
+        "MPV",
+        "PDW",
+        "Absolute Basophil Count",
+        "Absolute Eosinophil Count",
+        "Absolute Monocyte Count",
+    ]:
+        policy = policy_for(name)
+        assert policy is not None, name
+        assert policy.assessable is False, name
+        assert policy.tier is AssessmentTier.DEFERRED, name
+
+
+def test_absolute_neutrophil_count_stays_graded():
+    # The deliberate EXCEPTION to the reclassification above: a genuinely low
+    # absolute neutrophil count (neutropenia) is a real safety signal, so this
+    # one index stays graded (Tier A / assessable) on purpose.
+    policy = policy_for("Absolute Neutrophil Count")
+    assert policy is not None
+    assert policy.assessable is True
+    assert policy.tier is AssessmentTier.ASSESSED
+
+
 # --- the docs/14 done-when scenario ----------------------------------------
 
 
