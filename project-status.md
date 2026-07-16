@@ -251,17 +251,35 @@ From uploading a REAL Tata 1mg report through the app (2026-07-15). The parser n
 
 ## Exact next steps (to resume)
 
-1. **Sprint 8 in progress** (plan: `docs/16-sprint-8-plan.md`; milestone:
-   **RC1 LIVE** on Hugging Face Spaces). 8.1 ✅ done — the four deploy
-   decisions are locked (see the appendix in docs/16). Next task:
-   **8.2 — declare `knowledge_base/**/*.json` as package data in
-   `pyproject.toml` + a built-wheel test** (`uv build`, assert the KB JSON is
-   inside the wheel, per #019) — Rohit core + Claude test (~1.5h).
-   Then 8.3 WeasyPrint PDF → 8.4 render tests → 8.5 Gradio skeleton → 8.6
-   result rendering → 8.7 demo mode + deploy config → 8.8 app E2E → 8.9 eval
-   → 8.10 HF deploy → 8.11 coverage ratchet → 8.12 close (log #035–#037).
-   NOTE for deploy: the persisted RAG index cache path (#034,
-   `~/.cache/mediscan`) needs a writable location on the Space.
+1. **RESUME AT: Sprint 8.9 part 3 — the GRADING / SCOPE REVIEW** (the one
+   collaborative, clinical-judgment task left). Plan: `docs/16-sprint-8-plan.md`.
+   Done so far: 8.1–8.8 ✅ (commits through dca4ab1); 8.9 harness + parser
+   recall fix ✅ (`mediscan/evaluation/`, `docs/18-evaluation.md`, recall 92%
+   12/13, 0 false positives). What to do next, in order:
+   (a) **Grading/scope review (#030/#019)** — the visible product problem:
+       minor indices PDW (29.2) and Absolute Basophil Count (0.01) are graded
+       'Highly abnormal' and inflate the whole verdict to 'Urgent' on an
+       otherwise-fine report. Fix: open `medical/coverage.py` `_POLICY_DATA`
+       (the AssessmentPolicy, Tiers A/B/C) and `schemas/coverage.py`; move the
+       RIGHT tests from graded→acknowledged PER TEST, never blanket. ⚠️ HARD
+       SAFETY RULE: Absolute NEUTROPHIL Count must STAY graded (low ANC =
+       neutropenia = real emergency). Candidates to acknowledge: PDW, MPV, and
+       possibly the platelet/RBC indices — decide WITH Rohit, test by test.
+       Also sanity-check severity thresholds (#019). Present the current policy
+       to Rohit and make the calls together.
+   (b) Hallucination + confidence-sanity checks in the eval harness (extend
+       `mediscan/evaluation/`): every AI output grounded or guardrailed;
+       degraded input scores lower (confidence-on-zero already covered by
+       `test_scoring_empty`).
+   (c) Real-report recall run LOCALLY on Tata/Lal/Labsmart PDFs — record only
+       aggregate numbers in docs/18, NEVER report text (#010).
+   Then: **8.10** HF-Spaces deploy (`app.py`, `packages.txt` for pango/cairo,
+   `MEDISCAN_DEMO_MODE=1`, writable `MEDISCAN_RAG_INDEX_CACHE_DIR=/tmp/...` —
+   see docs/17-deploy-config.md) → **8.11** coverage ratchet → **8.12** close
+   (log decisions #035 PDF split, #036 demo-mode default, #037 packaging+deploy,
+   + new ones for the phrasing/row-reconstruction/eval work).
+   KNOWN GAP (deferred #033): real Tata HDL is multi-line (value+range on
+   separate reconstructed lines) → still missed; needs cross-line association.
 3. RC2/parked: native async provider SDK for true timeout cancellation (#032);
    per-finding explanation chains (needs a schema change; RC1 is report-level);
    honor 429 `retryDelay` in the chain; age-specific ranges (#029); the
