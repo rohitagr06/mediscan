@@ -105,12 +105,20 @@ _LAB_LINE = re.compile(
     r"\s+"
     r"(?P<unit>\S+)"  # UNIT: one non-space token
     r"\s+"
-    # Optional interpretive descriptor that some reports print inside the
-    # reference-interval cell BEFORE the number ("Desirable: <100",
-    # "Normal:", "Low (desirable): < 200"). It must end in a colon — a strong
-    # anchor that keeps ordinary prose from being mistaken for a lab row.
-    r"(?:(?P<desc>[A-Za-z()/ ]+?:)\s*)?"
+    # Optional interpretive descriptor some reports print inside the
+    # reference-interval cell BEFORE the range: colon forms ("Desirable:",
+    # "Low (desirable):") AND non-colon forms seen in real reports
+    # ("Normal - 70 - 140", "Undesirable/high risk <40"). Constrained to be
+    # DIGIT-FREE (so it can never eat a range number), start with a letter,
+    # and stay short (<=40) — and a VALID range must still follow. Those
+    # guards are what keep ordinary prose from being mistaken for a lab row;
+    # the extraction-recall + precision eval (tests/.../evaluation) watches it.
+    r"(?:(?P<desc>[A-Za-z][A-Za-z()/ :,-]{0,40}?)\s*)?"
     rf"(?P<range>{_RANGE_SRC})"  # RANGE: two-sided OR one-sided
+    # A unit sometimes glues straight onto a one-sided range with no space
+    # ("<40mg/dL"): consume an immediately-trailing alpha/%/slash unit so the
+    # row can still close. Empty for the common "< 40 " case, so it is safe.
+    r"(?P<gunit>[A-Za-z/%]*)"
     # A comma can glue to the range ("<150, GPO"), so allow a comma/semicolon
     # OR space as the separator before the trailing text, and permit trailing
     # punctuation at the very end.
