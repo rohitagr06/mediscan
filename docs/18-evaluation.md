@@ -68,8 +68,30 @@ any UNSOURCED band (no cited critical threshold) at MODERATE / "Consult Soon":
 URGENT/IMMEDIATE requires a real, sourced critical line (#034). Verified on the
 real Tata report — the verdict drops from "Urgent" to "Consult a doctor soon".
 
-## Still to do in this evaluation pass
+## Real-report recall (8.9c, local)
 
-- **Real-report accuracy (8.9c)** — run the app locally on the real Tata / Lal
-  PathLabs / Labsmart PDFs; record only aggregate recall numbers here (never
-  text, #010).
+Measured with `scripts/local_recall.py` on FOUR real reports from different
+labs, on Rohit's machine only. This repo records aggregate counts — never a
+name, value, or line of report text (#010); the reports are anonymised (A-D)
+for the same reason. `recall_est = parsed / (parsed + miss_est)`, where
+`miss_est` counts unparsed lines that still look like a lab result (a number
+next to a known unit). That heuristic slightly OVER-counts unit-bearing prose,
+so every figure below is a conservative LOWER-ish bound, not a certified metric.
+
+| Report (anon) | Parsed | Miss est. | Recall est. |
+|---|---|---|---|
+| A (large multi-panel) | 91 | 17 | 84% |
+| B | 51 | 6 | 89% |
+| C (multi-line HDL, #033) | 56 | 15 | 79% |
+| D (dense layout) | 49 | 29 | 63% |
+| **Aggregate** | **247** | **67** | **~79%** |
+
+A fifth sample is a deliberately type-spoofed file; the ingestion validator
+correctly REJECTS it (`SpoofedFileTypeError`) and the helper reports+skips it —
+evidence the spoof guard fires on real input.
+
+**Read.** The parser recovers roughly four in five real result rows with zero
+crashes, and precision stays the priority (a wrong value is worse than a miss).
+Misses cluster in reports with multi-line reference cells (#033) and report D's
+denser layout. That is the next parser investment, NOT an RC1 blocker: a missed
+test always surfaces in "lines we could not read", never as a wrong result.
