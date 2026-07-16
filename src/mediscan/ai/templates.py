@@ -11,6 +11,7 @@ WHY THIS FILE EXISTS
     urgency), not prompts — it is the floor the assembly drops to.
 """
 
+from mediscan.medical.phrasing import describe_finding
 from mediscan.schemas import (
     DietaryConsideration,
     DoctorSummary,
@@ -37,11 +38,8 @@ def _notable(assessments: list[SeverityAssessment]) -> list[SeverityAssessment]:
 
 
 def _describe(a: SeverityAssessment) -> str:
-    """One plain sentence for a single notable finding."""
-    if a.severity is None:
-        return f"{a.test_name} could not be assessed (no reference range)."
-    direction = a.abnormal_direction.value if a.abnormal_direction else "abnormal"
-    return f"{a.test_name} is {a.severity.value} ({direction}) at {a.value}."
+    """One plain sentence for a single notable finding (shared phrasing)."""
+    return describe_finding(a)
 
 
 def patient_summary(

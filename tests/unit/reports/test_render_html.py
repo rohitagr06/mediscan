@@ -87,6 +87,14 @@ def test_acknowledged_never_carries_severity_styling(full_report):
 # ---------------------------------------------------------------------------
 
 
+def test_unparsed_lines_are_collapsed(full_report):
+    # The (long, noisy) unparsed dump is hidden behind a <details> accordion
+    # so it never buries the analysis (8.6).
+    html = render_html(full_report)
+    assert "<details>" in html
+    assert "unparsed line" in html
+
+
 def test_malicious_test_name_is_escaped(assessment_factory):
     report = AnalysisReport(
         lab_results=[

@@ -3,15 +3,7 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-15 (Sprint 8: 8.1 ✅ + 8.2 ✅. 8.1 locked the four
-deploy forks (HF Spaces · deterministic demo mode `providers=[]` · eval =
-synthetic in CI + real LOCAL per #010 · WeasyPrint) — table in the docs/16
-appendix. 8.2 proved the built wheel ships + loads the KB
-(`tests/packaging/test_wheel_contents.py`; uv_build ships module files by
-default, so no pyproject change was needed). ⚠️ Mid-8.2 a STALE bridge-staged
-`pyproject.toml` clobbered the live one (commit ae4da8c gutted uv.lock);
-recovered in 9cf82ad via `git checkout ae4da8c~1 -- pyproject.toml uv.lock`.
-Suite: 415 passing. Next: **8.3 — WeasyPrint PDF report**.)
+**Last updated:** 2026-07-15 (Sprint 8: 8.1–8.6 in progress + a MAJOR real-PDF fix. 8.3/8.4 = WeasyPrint HTML→PDF rendering (#035); 8.5 = Gradio app skeleton with the testable `analyze()` seam (#036). **MILESTONE: the app reads a REAL report.** A real Tata 1mg 15-page PDF went from `assessed=0` (parser saw a column-major text stream) to `assessed=33 acknowledged=22` after switching PyMuPDF to WORD-GEOMETRY row reconstruction (`ocr/_rows.py`, `reconstruct_lines`); every value stayed matched to its OWN range; confidence now collapses to 0 when nothing parses (`parsed_count` in scoring). 8.6 = result-rendering polish: shared `medical/phrasing.py::describe_finding` fixed the confusing 'X is high (low) at …' wording (now 'Creatinine is mildly elevated at 1.33') across BOTH urgency reasons and template summaries; chain.py no longer logs ERROR when demo mode passes 0 providers. Commits through ec8b49f (8.6 pending commit). Suite: 444 passing + new phrasing tests. Next: finish 8.6 commit, then **8.7 — demo mode + deploy config**. Parser/scope refinements catalogued below for **8.9 (evaluation)**.)
 
 ---
 
@@ -246,6 +238,15 @@ persisted the RAG index (#034), and wired PHI-safe observability.** Suite:
 3. Minor/nominal: Sprint-0 "break the CI" exercise still open.
 
 No hard blockers for starting Sprint 8.
+
+## Sprint 8 real-run findings — 8.9 (evaluation) targets
+
+From uploading a REAL Tata 1mg report through the app (2026-07-15). The parser now reads it well (33 assessed, 22 acknowledged, ranges correctly matched), but a long tail remains — to be measured + fixed systematically at 8.9, not hacked now:
+
+1. **Missed tests with prefixed / multi-line ranges** (currently land in 'could not read'): **HDL 47** (range wraps: 'Undesirable/high risk <40mg/dL'), **Glucose-Random 80** (range 'Normal - 70 - 140,' — the word 'Normal' + trailing comma break the range grammar). HDL missing from a lipid panel matters.
+2. **Vitamin D shows the WRONG range** ('31.7 … < 20'): parser grabbed the 'Deficiency:<20' threshold as the range. Acknowledged (not graded) so no false verdict, but the displayed range misleads (31.7 is actually sufficient, 30–100).
+3. **Scope/threshold — urgency inflation:** PDW (29.2) and Absolute Basophil Count (0.01) were graded 'highly abnormal' and pushed the overall verdict to URGENT, which over-alarms. Question for #030/#019: should platelet indices + absolute differential counts be in the ASSESSED (graded) tier, or ACKNOWLEDGED? Genuinely notable values were only Creatinine (mild high), Uric Acid (moderate high), LDL (high) — none individually urgent.
+4. **Eval harness (the 8.9 deliverable itself):** measure extraction recall + grading precision on synthetic fixtures in CI, and once locally on the real Tata/Lal/Labsmart reports (#010 — aggregate numbers only, never commit report text).
 
 ## Exact next steps (to resume)
 

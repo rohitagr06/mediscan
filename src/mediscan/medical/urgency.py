@@ -11,6 +11,7 @@ THE TWO SAFETY RULES (decision #022):
      silently ignored.
 """
 
+from mediscan.medical.phrasing import describe_finding
 from mediscan.schemas import (
     Severity,
     UrgencyAssessment,
@@ -73,15 +74,7 @@ def assess_urgency(assessments: list[SeverityAssessment]) -> UrgencyAssessment:
             # Only findings that actually raise urgency above Routine are
             # worth naming as reasons for the level.
             if finding_level != UrgencyLevel.ROUTINE:
-                direction = (
-                    a.abnormal_direction.value
-                    if a.abnormal_direction is not None
-                    else "abnormal"
-                )
-                reasons.append(
-                    f"{a.test_name} is {a.severity.value} ({direction}) "
-                    f"at {a.value}."
-                )
+                reasons.append(describe_finding(a))
                 contributing.append(a.test_name)
 
         overall = _worse(overall, finding_level)

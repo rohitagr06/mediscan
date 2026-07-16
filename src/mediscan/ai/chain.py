@@ -44,6 +44,13 @@ def generate_with_fallback(
     `sleep` is injectable so tests run instantly (pass a no-op).
     Raises AllProvidersFailed only when every provider is exhausted.
     """
+    if not providers:
+        # Demo/deterministic mode passes no providers ON PURPOSE: this is
+        # the intended no-AI path, not a failure. Signal it quietly and let
+        # the caller drop to the deterministic template.
+        log.debug("no AI providers configured; using deterministic templates")
+        raise AllProvidersFailed("no AI providers configured")
+
     last_error: LLMError | None = None
     for provider in providers:
         for attempt in range(settings.llm_max_retries + 1):

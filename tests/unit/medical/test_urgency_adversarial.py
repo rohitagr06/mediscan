@@ -162,7 +162,9 @@ def test_reason_names_the_driver():
     result = assess_urgency(findings)
     joined = " ".join(result.reasons).lower()
     assert "hemoglobin" in joined
-    assert "high" in joined
+    # New shared phrasing (8.6): HIGH severity reads as "markedly",
+    # the LOW direction as "low" — clearer than the old "high (low)".
+    assert "markedly" in joined
     assert "low" in joined
 
 
@@ -179,11 +181,11 @@ def test_contributing_excludes_normal_and_mild():
 
 def test_direction_none_uses_abnormal_fallback():
     """Defensive branch: an abnormal finding with no recorded direction
-    still produces a readable reason ('(abnormal)') and the right level."""
+    still produces a readable reason ('outside range') and the right level."""
     findings = [sa("Weird", Severity.HIGH, direction=None, value=9.0)]
     result = assess_urgency(findings)
     assert result.level is UrgencyLevel.URGENT
-    assert "(abnormal)" in " ".join(result.reasons)
+    assert "outside range" in " ".join(result.reasons)
 
 
 # ---------------------------------------------------------------------------

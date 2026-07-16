@@ -300,9 +300,11 @@ def _unparsed_section(report: AnalysisReport) -> str:
     count = len(report.coverage.unparsed)
     return (
         "<h2>Lines we could not read</h2>"
-        f'<div class="note">{count} line(s) of the document could not be '
-        "parsed and are not reflected above.</div>"
-        f"{_bullet_list(report.coverage.unparsed)}"
+        f'<div class="note">{count} line(s) — mostly page headers, '
+        "comments and lab boilerplate — were not recognised as results "
+        "and are not part of the analysis above.</div>"
+        f"<details><summary>Show the {count} unparsed line(s)</summary>"
+        f"{_bullet_list(report.coverage.unparsed)}</details>"
     )
 
 
