@@ -1,5 +1,25 @@
 [
-  {"test_name": "HbA1c", "unit": "%", "low": 4.0, "high": 5.6, "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"},
-  {"test_name": "Fasting Glucose", "unit": "mg/dL", "low": 70, "high": 100, "source": "American Diabetes Association — fasting plasma glucose (normal)"},
-  {"test_name": "Postprandial Glucose", "unit": "mg/dL", "high": 140, "source": "American Diabetes Association — 2-hour postprandial glucose (normal)"}
+  {
+    "test_name": "HbA1c",
+    "unit": "%",
+    "low": 4.0,
+    "high": 5.6,
+    "source": "Tata 1mg Diagnostics adult reference interval (routine health-check panel)"
+  },
+  {
+    "test_name": "Fasting Glucose",
+    "unit": "mg/dL",
+    "low": 70,
+    "high": 100,
+    "source": "Normal: American Diabetes Association fasting plasma glucose. Labcorp Critical (Panic) Values 2024 \u2014 glucose critical: <40 / >500 mg/dL",
+    "critical_low": 40.0,
+    "critical_high": 500.0
+  },
+  {
+    "test_name": "Postprandial Glucose",
+    "unit": "mg/dL",
+    "high": 140,
+    "source": "Normal: American Diabetes Association 2-hour postprandial glucose. Labcorp Critical (Panic) Values 2024 \u2014 glucose critical: <40 / >500 mg/dL",
+    "critical_high": 500.0
+  }
 ]

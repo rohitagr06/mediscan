@@ -67,21 +67,28 @@ def _band(
             return Severity.MODERATE, direction
         return Severity.HIGH, direction
 
-    # 6. Option A: no critical threshold -> percentage from the boundary,
-    #    CAPPED AT HIGH. We never invent a CRITICAL line (#020).
+    # 6. Option A: no SOURCED critical threshold. Two safety rules compound
+    #    here. First (#020): we never invent a CRITICAL line, so this path can
+    #    never return CRITICAL. Second (#034, the 8.9 calibration fix): without
+    #    a sourced critical line we also have no clinical basis to claim URGENT,
+    #    so this path is CAPPED AT MODERATE (which rolls up to "Consult Soon" at
+    #    most), never HIGH. A test only earns HIGH/CRITICAL once its KB entry
+    #    carries a real, cited critical threshold (Option B above). This stops a
+    #    value that is merely a large percentage past a SOFT target (e.g. LDL
+    #    31% over a "< 100" optimal) from masquerading as an emergency. The
+    #    printed value is still shown, so the reader always sees the real number.
     # Float-safe zero check: floats carry tiny representation errors, so a
     # boundary that "should" be 0 might be stored as 2e-17. Exact `== 0`
     # would miss it and we'd divide by (almost) zero below, producing a
     # nonsense deviation. Anything this close to zero is zero for our purposes.
     if abs(boundary) < 1e-9:
-        # can't take a percentage of zero; be conservative
-        return Severity.HIGH, direction
+        # can't take a percentage of zero; still abnormal, but capped.
+        return Severity.MODERATE, direction
     dev = abs(value - boundary) / abs(boundary)
     if dev < settings.severity_pct_mild:
         return Severity.MILD, direction
-    if dev < settings.severity_pct_moderate:
-        return Severity.MODERATE, direction
-    return Severity.HIGH, direction
+    # Everything further out is MODERATE — the ceiling for an unsourced band.
+    return Severity.MODERATE, direction
 
 
 def assess_lab_result(result: LabResult, sex: Sex = Sex.UNKNOWN) -> SeverityAssessment:

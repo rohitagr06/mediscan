@@ -18,8 +18,9 @@ HOW THESE TESTS ARE ORGANISED (read top to bottom)
        -> CRITICAL because the critical test is inclusive). Edges are where
        `<` vs `<=` bugs hide.
     4. The "Option A, no criticals" path, whose defining safety property is
-       CAP-AT-HIGH: without a sourced critical threshold we NEVER invent a
-       CRITICAL verdict, no matter how far out the value is (decision #020).
+       CAP-AT-MODERATE: without a sourced critical threshold we never invent a
+       CRITICAL verdict (#020) AND never claim HIGH/URGENT either (#034, the
+       8.9 calibration fix) — the band tops out at MODERATE / "Consult Soon".
     5. The un-assessable path: no range at all -> severity is None, never a
        reassuring NORMAL.
     6. The float-safe zero-boundary guard.
@@ -39,6 +40,7 @@ from pydantic import ValidationError
 
 from mediscan.config import settings
 from mediscan.medical.severity import _band, assess_lab_result, assess_results
+from mediscan.medical.urgency import assess_urgency
 from mediscan.schemas import (
     AbnormalDirection,
     LabResult,
@@ -46,6 +48,7 @@ from mediscan.schemas import (
     ReferenceRange,
     Severity,
     SeverityAssessment,
+    UrgencyLevel,
 )
 
 # CriticalThresholds/RangeSource live in the medical schema module.
@@ -73,8 +76,9 @@ def res_with_criticals(low, high, critical_low, critical_high) -> RangeResolutio
 def res_no_criticals(low=None, high=None) -> RangeResolution:
     """A range with NO critical thresholds -- the 'Option A' path.
 
-    Bands by percentage-from-the-boundary and is CAPPED at HIGH: it must
-    never produce CRITICAL, because no sourced critical line exists.
+    Bands by percentage-from-the-boundary and is CAPPED at MODERATE: with no
+    sourced critical line it must never produce CRITICAL (#020) or even HIGH
+    (#034) — an unsourced band rolls up to "Consult Soon" at most.
     """
     return RangeResolution(
         reference_range=ReferenceRange(low=low, high=high),
@@ -155,9 +159,10 @@ def test_critical_edges_are_critical_inclusive_comparison():
 
 
 # ---------------------------------------------------------------------------
-# 3. Option A (no criticals): CAP-AT-HIGH is the safety property.
+# 3. Option A (no criticals): CAP-AT-MODERATE is the safety property.
 #    range 40-50, no criticals. dev = |value - boundary| / |boundary|
-#    cutoffs (defaults): pct_mild=0.15, pct_moderate=0.30
+#    cutoff (default): pct_mild=0.15. Anything past mild is MODERATE — an
+#    unsourced band never reaches HIGH (#034) or CRITICAL (#020).
 # ---------------------------------------------------------------------------
 
 
@@ -170,28 +175,83 @@ def test_critical_edges_are_critical_inclusive_comparison():
         # LOW side (boundary 40)
         (38.0, Severity.MILD, AbnormalDirection.LOW),  # dev 0.050
         (33.0, Severity.MODERATE, AbnormalDirection.LOW),  # dev 0.175
-        (26.0, Severity.HIGH, AbnormalDirection.LOW),  # dev 0.350
-        (1.0, Severity.HIGH, AbnormalDirection.LOW),  # dev 0.975 -> STILL only HIGH
+        (
+            26.0,
+            Severity.MODERATE,
+            AbnormalDirection.LOW,
+        ),  # dev 0.350 -> capped MODERATE
+        (
+            1.0,
+            Severity.MODERATE,
+            AbnormalDirection.LOW,
+        ),  # dev 0.975 -> STILL only MODERATE
         # HIGH side (boundary 50)
         (53.0, Severity.MILD, AbnormalDirection.HIGH),  # dev 0.060
         (58.0, Severity.MODERATE, AbnormalDirection.HIGH),  # dev 0.160
-        (70.0, Severity.HIGH, AbnormalDirection.HIGH),  # dev 0.400
-        (200.0, Severity.HIGH, AbnormalDirection.HIGH),  # dev 3.0 -> STILL only HIGH
+        (
+            70.0,
+            Severity.MODERATE,
+            AbnormalDirection.HIGH,
+        ),  # dev 0.400 -> capped MODERATE
+        (
+            200.0,
+            Severity.MODERATE,
+            AbnormalDirection.HIGH,
+        ),  # dev 3.0 -> STILL only MODERATE
     ],
 )
-def test_band_option_a_no_criticals_caps_at_high(value, expected_sev, expected_dir):
-    """Without sourced criticals, the engine NEVER invents CRITICAL (#020)."""
+def test_band_option_a_no_criticals_caps_at_moderate(value, expected_sev, expected_dir):
+    """Without sourced criticals the band tops out at MODERATE: never CRITICAL
+    (#020) and never HIGH/URGENT (#034, the 8.9 calibration fix)."""
     sev, direction = _band(value, res_no_criticals(low=40.0, high=50.0))
     assert sev is expected_sev
     assert direction is expected_dir
 
 
-def test_option_a_never_returns_critical_even_at_extremes():
-    """Belt-and-braces: sweep absurd values, assert CRITICAL never appears."""
+def test_option_a_never_returns_critical_or_high_even_at_extremes():
+    """Belt-and-braces: sweep absurd values; without a sourced critical line
+    the band must never reach HIGH (#034) or CRITICAL (#020)."""
     res = res_no_criticals(low=40.0, high=50.0)
     for value in (0.001, 5.0, 1_000.0, 1_000_000.0):
         sev, _ = _band(value, res)
         assert sev is not Severity.CRITICAL
+        assert sev is not Severity.HIGH
+
+
+# ---------------------------------------------------------------------------
+# 3b. The 8.9 severity->urgency calibration decision (#034), locked end to end.
+#     Two halves of one rule: "URGENT/IMMEDIATE requires a SOURCED critical
+#     line." Unsourced abnormals cap at Consult Soon; a sourced critical still
+#     escalates. These pin the exact behaviour the scope review was about.
+# ---------------------------------------------------------------------------
+
+
+def test_unsourced_large_deviation_caps_at_consult_soon_not_urgent():
+    """An LDL-style value 65% over a soft '< 100' target has NO sourced
+    critical line, so it bands MODERATE and the report tops out at Consult
+    Soon — never Urgent (this is the report that used to over-warn)."""
+    ldl = LabResult(
+        test_name="LDL Cholesterol",
+        value=165.0,
+        unit="mg/dL",
+        reference_range=ReferenceRange(high=100.0),
+    )
+    a = assess_lab_result(ldl)
+    assert a.severity is Severity.MODERATE
+    assert a.abnormal_direction is AbnormalDirection.HIGH
+    assert assess_urgency([a]).level is UrgencyLevel.CONSULT_SOON
+
+
+def test_sourced_glucose_critical_still_reaches_immediate():
+    """The other half of the hybrid: a test WITH a sourced critical line still
+    escalates. Fasting glucose 520 is past the KB's Labcorp >500 critical, so
+    it bands CRITICAL and the report is Immediate — the cap does not blunt a
+    genuine emergency."""
+    g = LabResult(test_name="Fasting Glucose", value=520.0, unit="mg/dL")
+    a = assess_lab_result(g)  # no report range -> KB fallback incl. criticals
+    assert a.severity is Severity.CRITICAL
+    assert a.abnormal_direction is AbnormalDirection.HIGH
+    assert assess_urgency([a]).level is UrgencyLevel.IMMEDIATE
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +276,10 @@ def test_band_unknown_range_is_unassessable():
     [
         (150.0, Severity.NORMAL),  # below the only (high) bound -> inside
         (250.0, Severity.MODERATE),  # dev 50/200 = 0.25 -> MODERATE
-        (300.0, Severity.HIGH),  # dev 100/200 = 0.50, no criticals -> capped HIGH
+        (
+            300.0,
+            Severity.MODERATE,
+        ),  # dev 100/200 = 0.50, no criticals -> capped MODERATE
     ],
 )
 def test_band_one_sided_high_only_range(value, expected_sev):
@@ -239,9 +302,10 @@ def test_band_one_sided_high_only_range(value, expected_sev):
 
 def test_zero_boundary_is_guarded_conservatively():
     res = res_no_criticals(low=0.0, high=10.0)
-    # value below a zero low-boundary: can't take a percentage of zero.
+    # value below a zero low-boundary: can't take a percentage of zero. Still
+    # abnormal, but capped at MODERATE like any unsourced band (#034).
     sev, direction = _band(-0.5, res)
-    assert sev is Severity.HIGH
+    assert sev is Severity.MODERATE
     assert direction is AbnormalDirection.LOW
 
 
@@ -249,7 +313,7 @@ def test_zero_boundary_guard_survives_float_dust():
     """A boundary that is 'zero' only to within float error is still caught."""
     res = res_no_criticals(low=1e-17, high=10.0)  # ~0 but not exactly
     sev, _ = _band(-1.0, res)
-    assert sev is Severity.HIGH  # guard fired; no divide-by-almost-zero blowup
+    assert sev is Severity.MODERATE  # guard fired; no divide-by-almost-zero blowup
 
 
 # ---------------------------------------------------------------------------

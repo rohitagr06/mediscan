@@ -69,9 +69,16 @@ def _assert_common_scope(coverage, urgency):
         assert assessed[name].severity is Severity.NORMAL
         assert assessed[name].abnormal_direction is None
 
-    # --- nothing critical anywhere; the verdict is Urgent ------------------
+    # --- nothing critical anywhere; the verdict is Consult Soon ------------
+    # The only abnormals are lipids (LDL/Total/Triglycerides/HDL), and lipids
+    # have NO sourced critical threshold in the KB, so each is capped at
+    # MODERATE (#034, the 8.9 calibration fix). A report whose worst finding is
+    # an unsourced elevation rolls up to "Consult Soon", never "Urgent" — that
+    # takes a sourced critical line (e.g. Hemoglobin, glucose). No assessed
+    # value here is even HIGH, let alone CRITICAL.
     assert all(a.severity is not Severity.CRITICAL for a in coverage.assessed)
-    assert urgency.level is UrgencyLevel.URGENT
+    assert all(a.severity is not Severity.HIGH for a in coverage.assessed)
+    assert urgency.level is UrgencyLevel.CONSULT_SOON
     assert urgency.reasons  # explainability is mandatory (schema guarantees >=1)
 
     # --- OUT-OF-SCOPE tests are acknowledged, NEVER graded ------------------
