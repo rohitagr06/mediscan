@@ -120,9 +120,21 @@ Get Optimal Requirement of Omega 3 in 1 Capsule
 *** End Of Report ***
 """
 
+# The SAME HDL row as it ACTUALLY reconstructs from the real Tata PDF: the
+# value and its range land on SEPARATE lines (a multi-line reference cell).
+# Parsing this needs cross-line range association (#033) — a currently-known
+# MISS. Tracked here so the eval never overclaims that HDL "works".
+_REAL_WORLD_MULTILINE = """\
+Cholesterol - HDL 47 mg/dL Undesirable/high risk Accelerator Selective
+<40mg/dL Detergent
+"""
+
+_MULTILINE_EXPECTED = {"Cholesterol - HDL"}
+
 EVAL_CASES: list[tuple[str, str, set[str]]] = [
     ("clean_multipanel", _CLEAN_MULTIPANEL, _CLEAN_EXPECTED),
     ("real_world_messy", _REAL_WORLD_MESSY, _MESSY_EXPECTED),
+    ("real_world_multiline", _REAL_WORLD_MULTILINE, _MULTILINE_EXPECTED),
     ("real_world_noise", _REAL_WORLD_NOISE, set()),
 ]
 

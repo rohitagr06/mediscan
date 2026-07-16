@@ -43,9 +43,14 @@ def test_missing_expected_is_reported():
 
 def test_runner_and_formatter_work():
     results = run_extraction_eval()
-    assert len(results) == 3
+    assert len(results) == 4
     labels = {r.label for r in results}
-    assert labels == {"clean_multipanel", "real_world_messy", "real_world_noise"}
+    assert labels == {
+        "clean_multipanel",
+        "real_world_messy",
+        "real_world_multiline",
+        "real_world_noise",
+    }
 
     report = format_extraction_report(results)
     assert "Extraction-recall evaluation" in report

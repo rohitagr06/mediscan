@@ -13,24 +13,29 @@ how many did we parse?) and **precision** (did we ever parse something we
 shouldn't — a false finding, which for a medical tool is worse than a miss).
 
 **Baseline** (before the 8.9 parser fix): overall recall **83%** (10/12). The
-messy real-world formats missed — HDL's descriptive wrapped range
-(`Undesirable/high risk <40mg/dL`) and glucose's word-prefixed range
-(`Normal - 70 - 140,`).
+messy real-world formats missed — HDL's descriptive wrapped range and
+glucose's word-prefixed range (`Normal - 70 - 140,`).
 
 **After the 8.9 parser fix** (a digit-free, bounded descriptive prefix before
 the range + a consumer for units glued onto a one-sided range):
 
-| Case | Recall | Parsed / Expected | False positives |
+| Case | Recall | Parsed / Expected | False+ |
 |---|---|---|---|
 | clean_multipanel | 100% | 8/8 | 0 |
-| real_world_messy | 100% | 4/4 | 0 |
+| real_world_messy (single-line) | 100% | 4/4 | 0 |
+| real_world_multiline (real Tata HDL) | 0% | 0/1 | 0 |
 | real_world_noise | — | 0/0 | 0 |
-| **Overall** | **100%** | **12/12** | **0** |
+| **Overall** | **92%** | **12/13** | **0** |
 
-The `real_world_noise` case (real Tata boilerplate: headers, footers, the
-pregnancy reference-range table, comments, marketing) parses to **zero** rows —
-precision held while recall rose from 83% to 100%. Guarded by
-`test_noise_case_yields_no_false_positives` and the parser precision tests.
+**What the fix won, and what it did NOT.** Glucose-Random and the *single-line*
+HDL format now parse (verified on the real Tata report — glucose appears in the
+acknowledged section). But the REAL Tata HDL row reconstructs across TWO lines
+(value on one, `<40mg/dL` range on the next), so it is STILL missed — captured
+honestly by `real_world_multiline`. Fixing it needs cross-line range
+association (#033), deferred: a miss is acceptable (HDL shows in 'could not
+read'), a wrong value never is. Precision held at **0 false positives**
+throughout — the noise case (real boilerplate + pregnancy table + marketing)
+parses to zero.
 
 ## Still to do in this evaluation pass
 
