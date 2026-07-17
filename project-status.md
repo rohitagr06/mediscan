@@ -3,7 +3,7 @@
 *Single source of truth for resuming across sessions. Cowork has no memory
 between chats, so this file carries it. Read this FIRST every session.*
 
-**Last updated:** 2026-07-16 (Sprint 8: **8.1–8.8 DONE + 8.9 in progress**, commits through **6128e83** (plus an uncommitted eval-honesty fix). 8.9 = the evaluation pass. Built `mediscan/evaluation/` — an extraction recall+PRECISION harness (`python -m mediscan.evaluation`, `docs/18-evaluation.md`). Parser fix: a digit-free bounded descriptive prefix + glued-unit consumer now parse single-line messy ranges — **Glucose-Random now parses on the REAL Tata report** (appears in acknowledged). ⚠️ HONESTY NOTE: the REAL Tata HDL row reconstructs across TWO lines (value + range separate), so HDL is STILL missed — tracked by the `real_world_multiline` eval case; honest overall recall **92% (12/13)**, **0 false positives** (noise case = real boilerplate parses to zero). Multi-line HDL needs cross-line association = **#033, deferred**. 465+ tests passing. REMAINING in 8.9: (a) hallucination/confidence-sanity checks, (b) THE GRADING/SCOPE REVIEW (#030/#019 — PDW/basophil 'Highly abnormal' inflates urgency to 'Urgent'; move the RIGHT tests to acknowledged, per-test, NEVER blanket — Absolute Neutrophil Count must stay graded). Then 8.10 HF deploy, 8.11 coverage, 8.12 close.)
+**Last updated:** 2026-07-16 (Sprint 8: **8.1–8.9 DONE**, commits through **ca76748** + a pending `docs/18` recall commit. THIS SESSION closed all of 8.9 (the evaluation pass): **(a)** the GRADING/SCOPE CALIBRATION — 7 low-actionability CBC indices moved Tier A→B, and the severity engine now CAPS unsourced bands at MODERATE/"Consult Soon" (URGENT/IMMEDIATE requires a sourced critical line); verified the REAL Tata report drops "Urgent"→"Consult a doctor soon". **(b)** grounding + confidence-sanity eval (`evaluation/grounding.py`). **(c)** local real-report recall (`scripts/local_recall.py`, **~79%** conservative floor across 4 reports). **478 tests passing, coverage ≥90%.** NEXT: **8.10** HF-Spaces deploy → 8.11 coverage ratchet → 8.12 close. ⚠️ DEBT: the whole Sprint-8 body of decisions is UNLOGGED in docs/04, and the severity-calibration decision is mis-tagged **#034** (collides with the RAG-index #034) — renumber all Sprint-8 decisions at 8.12. See "Sprint 8.9 — DONE" below + Open issues.)
 
 ---
 
@@ -142,7 +142,7 @@ acknowledged but never graded.** **Sprint 7 assembled it all into the
 orchestrator, added a deterministic confidence blend (#031), ran the AI
 explanations concurrently with timeouts (#032), decomposed the parser (#033),
 persisted the RAG index (#034), and wired PHI-safe observability.** Suite:
-413 passing on Rohit's Mac (incl. OCR + real-BGE), 92% coverage; CI enforces a
+478 passing on Rohit's Mac (incl. OCR + real-BGE), coverage ≥90%; CI enforces a
 90% floor.
 
 ## This session's accomplishments (Sprint 6.5)
@@ -197,6 +197,17 @@ persisted the RAG index (#034), and wired PHI-safe observability.** Suite:
   acknowledged / unparsed; only assessed feed urgency, so a sensitive or
   out-of-scope value can never move the verdict; KB integrity checks guard the
   policy↔KB coupling.
+- **#031–#034** (Sprint 7, logged in docs/04): confidence blend; sync-then-async
+  orchestration + executor timeouts; composable-recognizer parser; persisted
+  hash-keyed RAG index.
+- **Sprint 8 decisions — NOT YET FORMALLY NUMBERED (assign #035+ at 8.12):** PDF
+  split (8.3/8.4); demo-mode-as-policy default (8.6); packaging + deploy config
+  (8.7); shared phrasing helper `describe_finding` (8.6); word-geometry row
+  reconstruction real-PDF fix (8.5); extraction recall+precision eval (8.9); the
+  SCOPE Tier-A→B reclassification of 7 low-actionability indices (8.9a); the
+  SEVERITY calibration — unsourced bands cap at MODERATE + sourced glucose
+  criticals (8.9b, currently MIS-TAGGED #034 in code/tests/docs — RENUMBER);
+  grounding + confidence-sanity eval (8.9b).
 
 ## Current state of code
 
@@ -236,54 +247,86 @@ persisted the RAG index (#034), and wired PHI-safe observability.** Suite:
    — 5 sentences each in docs/06. (Later retros are written by the pair;
    Rohit can add a personal note.)
 3. Minor/nominal: Sprint-0 "break the CI" exercise still open.
+4. **⚠️ Decision-number hygiene (do at 8.12):** the whole Sprint-8 body of work is
+   unlogged in docs/04, and the severity-calibration decision was tagged "#034" in
+   code/tests/docs — which COLLIDES with the already-logged RAG-index #034 (Sprint
+   7). "#033" is also double-duty (composable parser AND the multi-line-HDL gap).
+   Assign a clean, unique sequence for all Sprint-8 decisions and update the
+   in-code references (`severity.py`, `test_severity.py`, `docs/18-evaluation.md`).
 
 No hard blockers for starting Sprint 8.
 
-## Sprint 8 real-run findings — 8.9 (evaluation) targets
+## Sprint 8.9 — the evaluation pass (DONE this session, 2026-07-16)
 
-From uploading a REAL Tata 1mg report through the app (2026-07-15). The parser now reads it well (33 assessed, 22 acknowledged, ranges correctly matched), but a long tail remains — to be measured + fixed systematically at 8.9, not hacked now:
+All three parts complete + pushed. Commits: `74098fc` (scope Tier A→B),
+`eb6d305` (severity calibration + glucose criticals), `8950e72` (grounding /
+confidence eval), `c17eee9`+`ca76748` (local recall helper), + a pending
+`docs/18` recall-record commit.
 
-1. **Missed tests with prefixed / multi-line ranges** (currently land in 'could not read'): **HDL 47** (range wraps: 'Undesirable/high risk <40mg/dL'), **Glucose-Random 80** (range 'Normal - 70 - 140,' — the word 'Normal' + trailing comma break the range grammar). HDL missing from a lipid panel matters.
-2. **Vitamin D shows the WRONG range** ('31.7 … < 20'): parser grabbed the 'Deficiency:<20' threshold as the range. Acknowledged (not graded) so no false verdict, but the displayed range misleads (31.7 is actually sufficient, 30–100).
-3a. **NOT a parser bug (clarified twice with Rohit, 2026-07-16):** on the real Tata report, Absolute Basophil Count (0.01) and PDW (29.2) show as 'Highly abnormal' → 'Urgent'. The PARSER is correct — the lab itself prints these in BOLD (its own abnormal flag), and MediScan matches the lab's ranges exactly. The problem is SEVERITY GRADING + SCOPE, not extraction. ⚠️ Do NOT 'fix' by blanket-acknowledging platelet indices / absolute differential counts: the same bucket holds Absolute NEUTROPHIL Count, where a low value (neutropenia) is a REAL emergency — hiding it to suppress a trivial basophil flag would be a safety regression (#006). The right fix is a careful per-test AssessmentPolicy review + severity-threshold sanity, done in 8.9.
-3. **Scope/threshold — urgency inflation:** PDW (29.2) and Absolute Basophil Count (0.01) were graded 'highly abnormal' and pushed the overall verdict to URGENT, which over-alarms. Question for #030/#019: should platelet indices + absolute differential counts be in the ASSESSED (graded) tier, or ACKNOWLEDGED? Genuinely notable values were only Creatinine (mild high), Uric Acid (moderate high), LDL (high) — none individually urgent.
-4. **Eval harness (the 8.9 deliverable itself):** measure extraction recall + grading precision on synthetic fixtures in CI, and once locally on the real Tata/Lal/Labsmart reports (#010 — aggregate numbers only, never commit report text).
+**(a) Grading / scope calibration — the urgency-inflation fix, TWO layers:**
+- **Scope (`medical/coverage.py` `_POLICY_DATA`):** moved SEVEN low-actionability
+  CBC indices Tier A (graded) → Tier B (acknowledged, not graded): MCHC, RDW-CV,
+  MPV, PDW, Absolute Monocyte/Eosinophil/Basophil Count. Absolute **NEUTROPHIL**
+  Count deliberately STAYS graded (low ANC = neutropenia = real emergency). Lock
+  tests in `test_coverage.py`; KB orphan checks relaxed to whole-policy so
+  Tier-B tests keep their KB entries. (Rohit chose the "Broader" set.)
+- **Severity (`medical/severity.py` Option A):** a test with NO cited critical
+  threshold now CAPS at MODERATE / "Consult Soon", never HIGH/Urgent. Rule:
+  **URGENT/IMMEDIATE requires a SOURCED critical line** (mirrors #020 "never
+  invent a critical line"). Stopped LDL 131 (31% over a soft "<100") faking an
+  emergency. Glucose gained its real Labcorp panic values (<40 / >500 mg/dL) so
+  genuine glycemic emergencies still fire IMMEDIATE; lipids/uric acid get NO
+  invented line. ✅ VERIFIED on the real Tata report: verdict "Urgent" →
+  "Consult a doctor soon"; the 7 indices now show in "also in your report (not
+  graded)". ⚠️ tagged "#034" in code — COLLIDES with RAG-index #034, renumber
+  at 8.12.
+
+**(b) Grounding + confidence-sanity eval (`evaluation/grounding.py`, 8.9b):** two
+PURE offline audits over a finished AnalysisReport. Hallucination —
+`find_ungrounded_numbers` / `find_ungrounded_test_names` flag any number or lab
+test name in the patient/doctor narrative NOT supported by the deterministic
+results (diet/lifestyle text exempt = non-lab quantities; conservative
+word-boundary name match that skips a name inside a grounded name, e.g. "Urea"
+in "Blood Urea Nitrogen"). Confidence sanity — scores in [0,1]; zero-parse ⇒
+zero overall; overall never exceeds its best component. Proven with a faithful
+report (clean) + a tampered one (`999.0` + "PSA" both caught). Wired into
+`python -m mediscan.evaluation` + `__init__`; tests in `test_grounding_eval.py`.
+
+**(c) Real-report recall (8.9c) — `scripts/local_recall.py` (COUNTS ONLY, #010):**
+runs the deterministic pipeline over a PDF and prints only integer counts + a
+PHI-safe `miss_est` (unparsed lines that still look like a result = number+unit)
+and `recall_est = parsed/(parsed+miss_est)`. Measured on 4 real reports on
+Rohit's Mac: aggregate **~79%** conservative recall (247/(247+67)); per-report
+63–89%. Spoofed file correctly REJECTED by the ingestion validator. Recorded
+ANONYMIZED in `docs/18-evaluation.md`. Misses cluster on multi-line reference
+cells (#033) + dense layouts — next PARSER work, NOT an RC1 blocker (a miss
+lands in "could not read", never a wrong value).
 
 ## Exact next steps (to resume)
 
-1. **RESUME AT: Sprint 8.9 part 3 — the GRADING / SCOPE REVIEW** (the one
-   collaborative, clinical-judgment task left). Plan: `docs/16-sprint-8-plan.md`.
-   Done so far: 8.1–8.8 ✅ (commits through dca4ab1); 8.9 harness + parser
-   recall fix ✅ (`mediscan/evaluation/`, `docs/18-evaluation.md`, recall 92%
-   12/13, 0 false positives). What to do next, in order:
-   (a) **Grading/scope review (#030/#019)** — the visible product problem:
-       minor indices PDW (29.2) and Absolute Basophil Count (0.01) are graded
-       'Highly abnormal' and inflate the whole verdict to 'Urgent' on an
-       otherwise-fine report. Fix: open `medical/coverage.py` `_POLICY_DATA`
-       (the AssessmentPolicy, Tiers A/B/C) and `schemas/coverage.py`; move the
-       RIGHT tests from graded→acknowledged PER TEST, never blanket. ⚠️ HARD
-       SAFETY RULE: Absolute NEUTROPHIL Count must STAY graded (low ANC =
-       neutropenia = real emergency). Candidates to acknowledge: PDW, MPV, and
-       possibly the platelet/RBC indices — decide WITH Rohit, test by test.
-       Also sanity-check severity thresholds (#019). Present the current policy
-       to Rohit and make the calls together.
-   (b) Hallucination + confidence-sanity checks in the eval harness (extend
-       `mediscan/evaluation/`): every AI output grounded or guardrailed;
-       degraded input scores lower (confidence-on-zero already covered by
-       `test_scoring_empty`).
-   (c) Real-report recall run LOCALLY on Tata/Lal/Labsmart PDFs — record only
-       aggregate numbers in docs/18, NEVER report text (#010).
-   Then: **8.10** HF-Spaces deploy (`app.py`, `packages.txt` for pango/cairo,
-   `MEDISCAN_DEMO_MODE=1`, writable `MEDISCAN_RAG_INDEX_CACHE_DIR=/tmp/...` —
-   see docs/17-deploy-config.md) → **8.11** coverage ratchet → **8.12** close
-   (log decisions #035 PDF split, #036 demo-mode default, #037 packaging+deploy,
-   + new ones for the phrasing/row-reconstruction/eval work).
-   KNOWN GAP (deferred #033): real Tata HDL is multi-line (value+range on
-   separate reconstructed lines) → still missed; needs cross-line association.
-3. RC2/parked: native async provider SDK for true timeout cancellation (#032);
-   per-finding explanation chains (needs a schema change; RC1 is report-level);
-   honor 429 `retryDelay` in the chain; age-specific ranges (#029); the
-   full scanner-pipeline parser rewrite if a new format needs it (#033).
+1. **RESUME AT: Sprint 8.10 — Hugging Face Spaces deploy.** Plans:
+   `docs/16-sprint-8-plan.md` + `docs/17-deploy-config.md`. Deliverables: an
+   `app.py` entrypoint at repo root (imports `mediscan.ui.build_app`);
+   `packages.txt` listing the pango/cairo system libs WeasyPrint needs on
+   Spaces; `MEDISCAN_DEMO_MODE=1` (no AI keys in the public Space); a WRITABLE
+   RAG cache (`MEDISCAN_RAG_INDEX_CACHE_DIR=/tmp/...` — `rag/index.py`
+   `_resolve_cache_root` already tempdir-falls-back on OSError, but set it
+   explicitly). First AUDIT what 8.7 already produced vs what Spaces needs, then
+   plan before touching anything. `ui/` + `reports/` are coverage-OMITTED, so
+   app wiring won't move the coverage number.
+2. **8.11** coverage ratchet — bump `--cov-fail-under` toward the real number.
+3. **8.12** close: (a) formally LOG + NUMBER all Sprint-8 decisions in docs/04
+   and FIX the #034 collision (severity-calibration → next free number; update
+   `severity.py`, `test_severity.py`, `docs/18`); (b) roadmap / README /
+   reflection updates.
+   KNOWN GAP (deferred, tracked as "#033" — also needs a clean number): the real
+   Tata HDL row is multi-line (value + range on separate reconstructed lines) →
+   still missed; needs cross-line range association. ~79% real-report recall
+   floor; misses cluster there + on dense layouts.
+4. RC2/parked: native async provider SDK for true timeout cancellation;
+   per-finding explanation chains (schema change; RC1 is report-level); honor
+   429 `retryDelay`; age-specific ranges (#029); the full scanner-pipeline parser
+   rewrite if a new format needs it; multi-line range association (above).
 
 **Gemini note:** free tier worked with model `gemini-2.5-flash`
 (gemini-2.0-flash had limit 0). Both keys live in Rohit's .env.
