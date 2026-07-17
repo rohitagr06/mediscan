@@ -1,3 +1,17 @@
+---
+title: MediScan By DipsAI
+emoji: 🩺
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 6.20.0
+app_file: app.py
+python_version: "3.12"
+pinned: false
+license: mit
+short_description: Explainable, safety-first lab-report analyzer (demo)
+---
+
 # MediScan by DipsAI
 
 **Intelligent Medical Report Analyzer**
