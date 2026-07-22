@@ -19,6 +19,7 @@ short_description: Explainable, safety-first lab-report analyzer (demo)
 ![CI](https://github.com/rohitagr06/mediscan/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![Portfolio](https://img.shields.io/badge/Portfolio-rohit.site.je-blue)](https://rohit.site.je/)
 
 MediScan is an AI-assisted medical document intelligence platform. Upload a lab report
 (PDF or photo) and get back a clear, plain-English analysis: which values are normal,
