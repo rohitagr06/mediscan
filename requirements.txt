@@ -1,13 +1,11 @@
-# MediScan — Hugging Face Spaces runtime deps (text-PDF demo).
-# Pinned to the versions in uv.lock. Image OCR (paddleocr + paddlepaddle) is
-# INTENTIONALLY EXCLUDED to keep the free-tier build light and reliable
-# (Sprint 8.10 decision): the public demo accepts text PDFs; an image upload
-# fails gracefully with a friendly notice.
+# MediScan demo runtime deps (Sprint 8.10) — SLIM, text-PDF, CPU-only.
+# Pinned to uv.lock. Deliberately EXCLUDED and never imported by the demo:
+#   - paddleocr / paddlepaddle (image OCR)
+#   - chromadb / sentence-transformers / torch (RAG; demo skips retrieval)
+# The pipeline imports RAG lazily, so none of the above load at startup.
 gradio==6.20.0
 pydantic==2.13.4
 pydantic-settings==2.14.2
 openai==2.44.0
 pymupdf==1.28.0
 weasyprint==69.0
-chromadb==1.5.9
-sentence-transformers==5.6.0

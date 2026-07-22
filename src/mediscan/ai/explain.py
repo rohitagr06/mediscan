@@ -9,11 +9,13 @@ WHY THIS FILE EXISTS
     model/prompt). Every output ALWAYS has a value — the report is never blank.
 """
 
+from __future__ import annotations
+
 import asyncio
 import functools
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from mediscan.ai import templates
 from mediscan.ai.base import LLMClient
@@ -28,7 +30,6 @@ from mediscan.ai.prompts import (
     SpecialistPrompt,
 )
 from mediscan.config import settings
-from mediscan.rag.retriever import RetrievedSnippet, retrieve
 from mediscan.safety.guardrail import check
 from mediscan.schemas import (
     ExplanationProvenance,
@@ -38,6 +39,22 @@ from mediscan.schemas import (
 )
 from mediscan.schemas.base import MediScanModel
 from mediscan.schemas.medical import SeverityAssessment
+
+if TYPE_CHECKING:
+    from mediscan.rag.retriever import RetrievedSnippet
+
+
+def _default_retrieve(query: str) -> list[RetrievedSnippet]:
+    """Lazy default retriever.
+
+    Importing the real retriever pulls in ChromaDB and the embedding model
+    (heavy). Deferring that import to call time keeps importing this module
+    light for the slim demo deploy, which passes its own no-op retriever and
+    never touches RAG (Sprint 8.10).
+    """
+    from mediscan.rag.retriever import retrieve
+
+    return retrieve(query)
 
 
 class Explanation(NamedTuple):
@@ -266,7 +283,7 @@ def assemble_report_explanations(
     providers: list[LLMClient],
     *,
     now: Callable[[], datetime] = _utcnow,
-    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = _default_retrieve,
 ) -> ReportExplanations:
     """Report-level explanation assembly (Sprint 7.3) — the orchestrator's entry.
 
@@ -365,7 +382,7 @@ def explain_report(
     providers: list[LLMClient],
     *,
     now: Callable[[], datetime] = _utcnow,
-    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = _default_retrieve,
 ) -> ReportExplanations:
     """Produce all four grounded, guardrailed, provenance-tagged outputs (sync)."""
     facts, sources = _build_facts(assessments, urgency, retrieve_fn)
@@ -390,7 +407,7 @@ async def assemble_report_explanations_async(
     providers: list[LLMClient],
     *,
     now: Callable[[], datetime] = _utcnow,
-    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = _default_retrieve,
     timeout: float | None = None,
 ) -> ReportExplanations:
     """Async assembly (Sprint 7.6): the four outputs run CONCURRENTLY.

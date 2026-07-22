@@ -45,4 +45,10 @@ from mediscan.ui import build_app  # noqa: E402 - path + env must be set first
 demo = build_app()
 
 if __name__ == "__main__":
-    demo.launch()
+    # Bind to all interfaces on the platform-provided $PORT so the host
+    # (Render, etc.) can route to it; falls back to Gradio's default
+    # locally. 0.0.0.0 is required for the container to be reachable.
+    demo.launch(
+        server_name="0.0.0.0",  # noqa: S104 - a web server must bind publicly
+        server_port=int(os.environ.get("PORT", "7860")),
+    )

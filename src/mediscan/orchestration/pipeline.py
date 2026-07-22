@@ -22,11 +22,14 @@ THE SAFETY INVARIANT (#006)
     complete.
 """
 
+from __future__ import annotations
+
 import asyncio
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mediscan.ai.explain import assemble_report_explanations_async
 from mediscan.confidence import (
@@ -39,12 +42,28 @@ from mediscan.extraction.parser import parse_lab_text
 from mediscan.medical.coverage import classify_coverage
 from mediscan.medical.urgency import assess_urgency
 from mediscan.observability import configure_logging, get_logger
-from mediscan.rag.retriever import RetrievedSnippet, retrieve
 from mediscan.schemas import (
     AnalysisReport,
     ExplanationSource,
     ProcessingMetadata,
 )
+
+if TYPE_CHECKING:
+    from mediscan.rag.retriever import RetrievedSnippet
+
+
+def _default_retrieve(query: str) -> list[RetrievedSnippet]:
+    """Lazy default retriever.
+
+    Importing the real retriever pulls in ChromaDB and the embedding model
+    (heavy). Deferring that import to call time keeps importing this module
+    light for the slim demo deploy, which passes its own no-op retriever and
+    never touches RAG (Sprint 8.10).
+    """
+    from mediscan.rag.retriever import retrieve
+
+    return retrieve(query)
+
 
 log = get_logger(__name__)
 
@@ -91,7 +110,7 @@ async def analyze_text_async(
     full_text: str,
     *,
     providers: list | None = None,
-    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = _default_retrieve,
     now: Callable[[], datetime] = _utcnow,
     ocr_confidence: float = 1.0,
     ocr_engine: str | None = None,
@@ -197,7 +216,7 @@ def analyze_text(
     full_text: str,
     *,
     providers: list | None = None,
-    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = _default_retrieve,
     now: Callable[[], datetime] = _utcnow,
     ocr_confidence: float = 1.0,
     ocr_engine: str | None = None,
@@ -255,7 +274,7 @@ async def analyze_document_async(
     path: str | Path,
     *,
     providers: list | None = None,
-    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = _default_retrieve,
     now: Callable[[], datetime] = _utcnow,
     timeout: float | None = None,
 ) -> AnalysisReport:
@@ -276,7 +295,7 @@ def analyze_document(
     path: str | Path,
     *,
     providers: list | None = None,
-    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = retrieve,
+    retrieve_fn: Callable[[str], list[RetrievedSnippet]] = _default_retrieve,
     now: Callable[[], datetime] = _utcnow,
     timeout: float | None = None,
 ) -> AnalysisReport:

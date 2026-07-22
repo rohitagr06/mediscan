@@ -70,6 +70,16 @@ def _providers_for(demo_mode: bool) -> list:
     return providers
 
 
+def _no_retrieval(_query: str) -> list:
+    """No-op retriever for the demo path.
+
+    With no AI providers there is nothing to ground, so we skip RAG
+    entirely. This is what keeps the slim deploy from importing ChromaDB
+    and the embedding model at runtime (Sprint 8.10).
+    """
+    return []
+
+
 def _display_html(report: AnalysisReport) -> str:
     """Wrap the full report document in a sandboxed iframe for on-page display.
 
@@ -134,7 +144,13 @@ def analyze(file_path: str | None, demo_mode: bool = True) -> tuple[str, str | N
     try:
         with SecureUploadDir() as upload_dir:
             stored = upload_dir.store(source)
-            report = analyze_document(stored, providers=_providers_for(demo_mode))
+            providers = _providers_for(demo_mode)
+            kwargs = {"providers": providers}
+            if not providers:
+                # No AI to ground -> skip RAG so the slim demo never
+                # loads ChromaDB + the embedding model (Sprint 8.10).
+                kwargs["retrieve_fn"] = _no_retrieval
+            report = analyze_document(stored, **kwargs)
     except Exception:  # noqa: BLE001 - the UI must never crash on a bad report
         _logger.exception("analysis_failed")  # PHI-safe: event name only
         return (
