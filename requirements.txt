@@ -6,6 +6,6 @@
 gradio==6.20.0
 pydantic==2.13.4
 pydantic-settings==2.14.2
-openai==2.44.0
+openai==2.46.0
 pymupdf==1.28.0
 weasyprint==69.0
